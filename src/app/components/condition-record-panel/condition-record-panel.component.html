@@ -1,0 +1,58 @@
+<!-- 移除外層的 modal-overlay 和 modal-content，直接從內容區塊開始 -->
+<div class="condition-record-panel-content">
+  <!-- 新增/編輯紀錄區塊 (只有 admin+contributor 可見) -->
+  @if (!isReadOnly) {
+  <div class="record-form" #recordFormElement>
+    <textarea
+      [(ngModel)]="newRecordContent"
+      [placeholder]="editingRecordId ? '正在編輯紀錄...' : '請在此輸入病情、透析狀況或注意事項...'"
+      rows="4"
+    ></textarea>
+    <div class="form-actions">
+      @if (editingRecordId) {
+        <button (click)="cancelEditing()" class="cancel-button">
+          取消編輯
+        </button>
+      }
+      <button (click)="handleSave()" class="save-button" [disabled]="isSaving()">
+        {{ isSaving() ? '儲存中...' : editingRecordId ? '更新紀錄' : '儲存紀錄' }}
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- 歷史紀錄區塊 -->
+  <div class="history-section">
+    <h3 class="history-title">歷史紀錄</h3>
+    @if (isLoading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        正在讀取歷史紀錄...
+      </div>
+    } @else if (error) {
+      <div class="error-state">
+        {{ error }}
+      </div>
+    } @else if (history.length > 0) {
+      <ul class="history-list">
+        @for (record of history; track record.id) {
+          <li class="history-item">
+            <p class="record-content">{{ record.content }}</p>
+            <div class="record-meta">
+              <span class="author">紀錄者: {{ record.authorName || '未知' }}</span>
+              <span class="timestamp">{{ formatTimestamp(record.createdAt) }}</span>
+            </div>
+            @if (!isReadOnly && auth.currentUser() && record.authorId === auth.currentUser()?.uid) {
+              <div class="record-actions">
+                <button (click)="startEditing(record)" class="action-btn edit-btn">編輯</button>
+                <button (click)="handleDelete(record.id)" class="action-btn delete-btn">刪除</button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <div class="empty-state">這位病人目前沒有任何歷史病情紀錄。</div>
+    }
+  </div>
+</div>

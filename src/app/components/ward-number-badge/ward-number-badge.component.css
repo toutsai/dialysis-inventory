@@ -1,0 +1,25 @@
+.ward-badge {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px dashed #bbb;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.ward-badge:hover {
+  border-color: #888;
+}
+.ward-input {
+  width: 76px;
+  height: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 0 4px;
+}

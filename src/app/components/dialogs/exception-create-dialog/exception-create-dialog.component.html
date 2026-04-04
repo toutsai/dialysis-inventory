@@ -1,0 +1,285 @@
+@if (isVisible) {
+  <div class="dialog-overlay">
+    <div class="dialog-content">
+      <header class="dialog-header">
+        <h2>{{ dialogTitle }}</h2>
+        <button class="close-button" (click)="onClose()">×</button>
+      </header>
+      <main class="dialog-body">
+        <!-- 步驟 1: 選擇病人 -->
+        <fieldset class="step-group">
+          <legend>步驟 1: 選擇主要病人</legend>
+          <button
+            class="select-btn"
+            (click)="isPatientDialogVisible = true"
+            [disabled]="isSubmitting || isEditingMode"
+          >
+            @if (formData.patientId) {
+              <div
+                class="patient-display-content"
+                [innerHTML]="selectedPatientDisplay"
+              ></div>
+            } @else {
+              <span class="text-muted">點擊以選擇病人...</span>
+            }
+          </button>
+        </fieldset>
+
+        <div class="subsequent-steps" [ngClass]="{ disabled: !formData.patientId }">
+          <!-- 步驟 2: 選擇調班類型 -->
+          <fieldset class="step-group">
+            <legend>步驟 2: 選擇調班類型</legend>
+            <div class="radio-group">
+              <label
+                ><input
+                  type="radio"
+                  [(ngModel)]="formData.type"
+                  value="MOVE"
+                  [disabled]="isEditingMode"
+                />
+                臨時調班</label
+              >
+              <label
+                ><input
+                  type="radio"
+                  [(ngModel)]="formData.type"
+                  value="SUSPEND"
+                  [disabled]="isEditingMode"
+                />
+                區間暫停</label
+              >
+              <label
+                ><input
+                  type="radio"
+                  [(ngModel)]="formData.type"
+                  value="ADD_SESSION"
+                  [disabled]="isEditingMode"
+                />
+                臨時加洗</label
+              >
+              <label
+                ><input
+                  type="radio"
+                  [(ngModel)]="formData.type"
+                  value="SWAP"
+                  [disabled]="isEditingMode"
+                />
+                同日互調</label
+              >
+            </div>
+          </fieldset>
+
+          <!-- 步驟 3: 設定調班資訊 -->
+          @if (formData.type) {
+            <fieldset class="step-group">
+              <legend>步驟 3: 設定調班資訊</legend>
+
+              <!-- MOVE -->
+              @if (formData.type === 'MOVE') {
+                <div class="details-section">
+                  <div class="form-group-grid">
+                    <div class="form-group">
+                      <label for="sourceDate">原始日期</label>
+                      <input
+                        type="date"
+                        id="sourceDate"
+                        [(ngModel)]="formData.from.sourceDate"
+                        (change)="fetchSourceSchedule()"
+                        [disabled]="isEditingMode"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>原始排班</label>
+                      <div class="info-box">{{ sourceBedDisplay }}</div>
+                    </div>
+                  </div>
+                  @if (formData.from.bedNum) {
+                    <div class="form-group-grid">
+                      <div class="form-group">
+                        <label for="targetDate">目標日期</label>
+                        <input type="date" id="targetDate" [(ngModel)]="formData.to.goalDate" />
+                      </div>
+                      <div class="form-group">
+                        <label>目標床位</label>
+                        <button
+                          class="select-btn"
+                          (click)="openBedAssignmentForTarget()"
+                          [disabled]="!formData.to.goalDate || isSubmitting"
+                        >
+                          {{ targetBedDisplay }}
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- SUSPEND -->
+              @if (formData.type === 'SUSPEND') {
+                <div class="details-section">
+                  <div class="form-group-grid">
+                    <div class="form-group">
+                      <label for="startDate">開始日期 (包含)</label>
+                      <input
+                        type="date"
+                        id="startDate"
+                        [(ngModel)]="formData.startDate"
+                        [disabled]="isEditingMode"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="endDate">結束日期 (包含)</label>
+                      <input
+                        type="date"
+                        id="endDate"
+                        [(ngModel)]="formData.endDate"
+                        [disabled]="isEditingMode"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ADD_SESSION -->
+              @if (formData.type === 'ADD_SESSION') {
+                <div class="details-section">
+                  <div class="form-group-grid">
+                    <div class="form-group">
+                      <label for="addSessionDate">加洗日期</label>
+                      <input type="date" id="addSessionDate" [(ngModel)]="formData.to.goalDate" />
+                    </div>
+                    <div class="form-group">
+                      <label for="addSessionMode">透析模式</label>
+                      <select id="addSessionMode" [(ngModel)]="formData.mode">
+                        @for (m of modeOptions; track m) {
+                          <option [value]="m">{{ m }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>目標床位</label>
+                    <button
+                      class="select-btn"
+                      (click)="openBedAssignmentForTarget()"
+                      [disabled]="!formData.to.goalDate || isSubmitting"
+                    >
+                      {{ targetBedDisplay }}
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- SWAP -->
+              @if (formData.type === 'SWAP') {
+                <div class="details-section">
+                  <div class="form-group">
+                    <label for="swapDate">互調日期</label>
+                    <input
+                      type="date"
+                      id="swapDate"
+                      [(ngModel)]="formData.date"
+                      (change)="fetchScheduleForSwap()"
+                      [disabled]="isEditingMode"
+                    />
+                  </div>
+                  @if (formData.date) {
+                    <div class="form-group-grid">
+                      <div class="form-group">
+                        <label>病人 A (主要病人)</label>
+                        <div class="info-box">{{ patientA_SwapDisplay }}</div>
+                      </div>
+                      <div class="form-group">
+                        <label>病人 B (選擇互調對象)</label>
+                        <select
+                          [(ngModel)]="patientB_SwapSelection"
+                          class="swap-select"
+                          [disabled]="!formData.patient1 || isFetchingSwapSchedule"
+                        >
+                          <option disabled value="">
+                            {{ formData.patient1 ? '請選擇...' : '請先確認病人A排班' }}
+                          </option>
+                          @for (slot of availableSlotsForPatientB; track slot.key) {
+                            <option [value]="slot.key">
+                              {{ slot.displayText }}
+                            </option>
+                          }
+                        </select>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </fieldset>
+          }
+
+          <!-- 步驟 4: 原因說明 -->
+          <fieldset class="step-group">
+            <legend>步驟 4: 原因說明</legend>
+            <div class="form-group">
+              <textarea [(ngModel)]="formData.reason" rows="2" placeholder="請簡要說明原因"></textarea>
+            </div>
+          </fieldset>
+        </div>
+      </main>
+      <!-- 核心修改 #1 -->
+      <footer class="dialog-footer">
+        <!-- 如果是編輯模式 (解決衝突)，顯示三個按鈕 -->
+        @if (isEditingMode) {
+          <div class="footer-editing-mode">
+            <button class="btn btn-danger" (click)="handleDelete()" [disabled]="isSubmitting">
+              撤銷此申請
+            </button>
+            <div>
+              <button
+                class="btn btn-primary"
+                (click)="submitForm()"
+                [disabled]="!isFormValid || isSubmitting"
+              >
+                {{ isSubmitting ? '提交中...' : '重新提交申請' }}
+              </button>
+              <button class="btn btn-secondary" (click)="onClose()">取消修改</button>
+            </div>
+          </div>
+        <!-- 否則，顯示正常的兩個按鈕 -->
+        } @else {
+          <div class="footer-normal-mode">
+            <button
+              class="btn btn-primary"
+              (click)="submitForm()"
+              [disabled]="!isFormValid || isSubmitting"
+            >
+              {{ isSubmitting ? '提交中...' : '提交申請' }}
+            </button>
+            <button class="btn btn-secondary" (click)="onClose()">取消</button>
+          </div>
+        }
+      </footer>
+    </div>
+  </div>
+
+  <!-- Child Dialogs -->
+  <app-patient-select-dialog
+    [isVisible]="isPatientDialogVisible"
+    [patients]="allPatients"
+    [showFillOptions]="false"
+    title="選擇病人"
+    (confirm)="handlePatientSelected($event)"
+    (cancel)="isPatientDialogVisible = false"
+  ></app-patient-select-dialog>
+  @if (isBedAssignmentVisible) {
+    <app-bed-assignment-dialog
+      [isVisible]="isBedAssignmentVisible"
+      [allPatients]="selectedPatientAsArray"
+      [bedLayout]="bedLayout"
+      [scheduleData]="bedAssignmentProps.scheduleData"
+      [targetDate]="bedAssignmentProps.targetDate"
+      [shifts]="shifts"
+      [freqMap]="freqMap"
+      [assignmentMode]="bedAssignmentProps.assignmentMode"
+      [hidePatientList]="true"
+      (close)="isBedAssignmentVisible = false"
+      (assignBed)="handleTargetBedAssigned($event)"
+    ></app-bed-assignment-dialog>
+  }
+}

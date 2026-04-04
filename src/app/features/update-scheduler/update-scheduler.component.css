@@ -1,0 +1,264 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+.page-container {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  height: calc(100vh - 60px);
+}
+
+.page-header {
+  border-bottom: 2px solid #dee2e6;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #343a40;
+  margin: 0;
+}
+
+.page-description {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #6c757d;
+}
+
+.page-main-content {
+  flex-grow: 1;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.updates-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #0069d9;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.custom-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.date-navigator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calendar-title-text {
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: #343a40;
+}
+
+.view-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.custom-calendar-header button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #fff;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.custom-calendar-header button:hover {
+  border-color: #868e96;
+  background-color: #e9ecef;
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 4rem 0;
+  color: #6c757d;
+  font-size: 1.2rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state i {
+  font-size: 3rem;
+  color: #198754;
+  margin-bottom: 1rem;
+}
+
+.calendar-wrapper {
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+::ng-deep .fc {
+  font-family: inherit;
+  height: 100%;
+}
+
+::ng-deep .fc-view-harness {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+::ng-deep .fc-daygrid-event {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.85em;
+  font-weight: 500;
+  border: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+::ng-deep .fc-event:hover {
+  opacity: 0.85;
+}
+
+::ng-deep .fc-day-today {
+  background-color: #eaf6ff !important;
+}
+
+.dialog-footer-custom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.dialog-footer-custom > div {
+  display: flex;
+  gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 0.5rem;
+  }
+  .page-title {
+    font-size: 1.5rem;
+  }
+  .page-description {
+    font-size: 0.85rem;
+  }
+  .page-main-content {
+    padding: 0.75rem;
+  }
+  .calendar-title-text {
+    font-size: 1.25rem;
+  }
+  .custom-calendar-header button,
+  .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}

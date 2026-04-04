@@ -1,0 +1,25 @@
+@if (isVisible) {
+  <div class="dialog-overlay">
+    <div class="dialog-container">
+      <header class="dialog-header">
+        <h2>設定全域跑馬燈公告</h2>
+        <button (click)="onClose()" class="close-btn">&times;</button>
+      </header>
+      <main class="dialog-body">
+        <quill-editor
+          [(ngModel)]="editableContent"
+          [modules]="{ toolbar: toolbarOptions }"
+          format="html"
+          placeholder="在此輸入並編輯公告內容..."
+          [styles]="{ height: '200px' }"
+        ></quill-editor>
+      </main>
+      <footer class="dialog-footer">
+        <button (click)="handleSave()" class="btn btn-primary" [disabled]="isSaving">
+          {{ isSaving ? '儲存中...' : '儲存公告' }}
+        </button>
+        <button (click)="onClose()" class="btn btn-secondary">取消</button>
+      </footer>
+    </div>
+  </div>
+}

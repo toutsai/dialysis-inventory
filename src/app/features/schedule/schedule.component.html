@@ -1,0 +1,783 @@
+<!-- Page Container -->
+<div class="page-container" [class.is-locked]="isPageLocked()">
+  <!-- Loading overlay -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>載入中...</p>
+    </div>
+  }
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <!-- Row 1: Title + Date Nav + Save/Export -->
+    <div class="header-toolbar">
+      <div class="toolbar-left">
+        <h1 class="page-title">每日排程</h1>
+        <div class="date-navigator">
+          <button class="btn" (click)="changeDate(-1)">&laquo; 前一天</button>
+          <span class="current-date-text">{{ currentDateDisplay() }}</span>
+          <span class="weekday-display">({{ weekdayDisplay() }})</span>
+          <button class="btn" (click)="changeDate(1)">後一天 &raquo;</button>
+          <button class="btn btn-info" (click)="goToToday()">今天</button>
+          <button class="btn btn-warning" (click)="runScheduleCheck()">排程檢視</button>
+          @if (auth.canEditSchedules()) {
+            <button
+              class="btn btn-info"
+              (click)="isAssignmentDialogVisible.set(true)"
+              [disabled]="isPageLocked()"
+            >
+              智慧排床
+            </button>
+            <button
+              class="btn"
+              style="background-color: #007bff; color: white; border-color: #007bff"
+              (click)="autoAssignNurseTeams()"
+              [disabled]="isPageLocked()"
+            >
+              自動分組
+            </button>
+            <button
+              class="btn btn-config-icon"
+              title="自動分組設定"
+              (click)="isAutoAssignConfigVisible.set(true)"
+              [disabled]="isPageLocked()"
+            >
+              ⚙️
+            </button>
+          }
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <span class="status-indicator">{{ statusIndicator() }}</span>
+        @if (auth.canEditSchedules()) {
+          <button
+            class="btn btn-success"
+            (click)="saveDataToCloud()"
+            [disabled]="isPageLocked() || !hasUnsavedChanges()"
+          >
+            儲存
+          </button>
+        }
+        <button class="btn btn-secondary" (click)="exportScheduleToExcel()">匯出Excel</button>
+      </div>
+    </div>
+
+    <!-- Row 2: Quick access buttons + Staff display + Stats toolbar -->
+    <div class="controls-panel">
+      <div class="controls-left">
+        <button
+          class="btn view-toggle-btn"
+          (click)="isSimplifiedViewVisible.set(!isSimplifiedViewVisible())"
+        >
+          &#9654; {{ isSimplifiedViewVisible() ? '關閉臨床查閱' : '展開臨床查閱' }}
+        </button>
+        <button class="btn btn-secondary" (click)="isInpatientRoundsDialogVisible.set(true)">
+          <i class="fas fa-hospital"></i> 住院趴趴走 ({{ todayInpatients.length }})
+        </button>
+        <button class="btn btn-secondary" (click)="isIcuOrdersDialogVisible.set(true)">
+          <i class="fas fa-clipboard-list"></i> ICU醫囑單
+        </button>
+      </div>
+      <div class="controls-center desktop-only">
+        <app-daily-staff-display
+          [physicians]="dailyPhysicians()"
+          [consultants]="dailyConsultPhysicians()"
+          [scheduleData]="currentRecord.schedule"
+          [targetDate]="formatDate(currentDate())"
+        ></app-daily-staff-display>
+      </div>
+      <div class="controls-right desktop-only">
+        <app-stats-toolbar
+          [statsData]="statsToolbarData"
+          [weekdays]="statsToolbarWeekdays"
+          size="compact"
+        ></app-stats-toolbar>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page Main Content -->
+  <div class="page-main-content">
+    <!-- Schedule Content -->
+    <div class="schedule-content">
+      <!-- Simplified View Overlay -->
+      @if (isSimplifiedViewVisible()) {
+        <div class="simplified-view-wrapper desktop-only">
+          <table class="simplified-table">
+            <thead>
+              <tr>
+                <th class="col-bed">床號</th>
+                @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                  <th>
+                    <div class="shift-header-content">
+                      <span>{{ getShiftDisplayName(shiftCode) }}</span>
+                      <button
+                        class="summary-icon-btn-table"
+                        (click)="showShiftRecordsSummary(shiftCode)"
+                        title="班次總覽"
+                      >
+                        <i class="fas fa-clipboard-list"></i>
+                      </button>
+                      <button
+                        class="summary-icon-btn-table"
+                        (click)="showShiftInjections(shiftCode)"
+                        title="應打針劑"
+                      >
+                        <i class="fas fa-syringe"></i>
+                      </button>
+                      <button
+                        class="summary-icon-btn-table"
+                        (click)="showShiftMedicationDrafts(shiftCode)"
+                        title="藥囑草稿"
+                      >
+                        <i class="fas fa-file-medical"></i>
+                      </button>
+                    </div>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (bedNum of sortedBedNumbers(); track bedNum) {
+                <tr>
+                  <td class="col-bed">{{ bedNum }}</td>
+                  @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                    <td
+                      [ngClass]="getPatientCellStyle('bed-' + bedNum + '-' + shiftCode)"
+                      (click)="handleSimplifiedCellClick('bed-' + bedNum + '-' + shiftCode)"
+                    >
+                      @if (currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId; as patientId) {
+                        <div class="patient-info-cell">
+                          <div class="patient-mrn-name">
+                            <span
+                              class="medical-record-number"
+                              (click)="$event.stopPropagation(); copyMedicalRecordNumber($any(patientMap().get(patientId))?.medicalRecordNumber)"
+                            >
+                              {{ $any(patientMap().get(patientId))?.medicalRecordNumber }}
+                            </span>
+                            <span class="patient-name-wrapper">
+                              {{ $any(patientMap().get(patientId))?.name }}
+                              @if (getPatientMode('bed-' + bedNum + '-' + shiftCode); as mode) {
+                                <span class="stats-special-mode">{{ mode }}</span>
+                              }
+                            </span>
+                            <app-patient-messages-icon
+                              [patientId]="patientId"
+                              [messageTypes]="getMessageTypesForPatient(patientId)"
+                              context="dialog"
+                              (click)="$event.stopPropagation()"
+                              (iconClick)="handleIconClick($event)"
+                            ></app-patient-messages-icon>
+                          </div>
+                          <div class="patient-ward-note">
+                            @if (isInpatientOrER('bed-' + bedNum + '-' + shiftCode)) {
+                              @if (getPatientWardNumber(patientId)) {
+                                <span
+                                  class="ward-number ward-number-badge"
+                                  (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                >{{ getPatientWardNumber(patientId) }}</span>
+                              } @else {
+                                <button
+                                  class="ward-edit-icon"
+                                  (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                  [disabled]="isPageLocked()"
+                                >🛏️</button>
+                              }
+                            }
+                            @if (getCombinedNote('bed-' + bedNum + '-' + shiftCode)) {
+                              <span class="patient-note">{{ getCombinedNote('bed-' + bedNum + '-' + shiftCode) }}</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+              <!-- Peripheral beds -->
+              @for (i of peripheralBedRange(); track i) {
+                <tr>
+                  <td class="col-bed">外{{ i }}</td>
+                  @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                    <td
+                      [ngClass]="getPatientCellStyle('peripheral-' + i + '-' + shiftCode)"
+                      (click)="handleSimplifiedCellClick('peripheral-' + i + '-' + shiftCode)"
+                    >
+                      @if (currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId; as patientId) {
+                        <div class="patient-info-cell">
+                          <div class="patient-mrn-name">
+                            <span
+                              class="medical-record-number"
+                              (click)="$event.stopPropagation(); copyMedicalRecordNumber($any(patientMap().get(patientId))?.medicalRecordNumber)"
+                            >
+                              {{ $any(patientMap().get(patientId))?.medicalRecordNumber }}
+                            </span>
+                            <span class="patient-name-wrapper">
+                              {{ $any(patientMap().get(patientId))?.name }}
+                              @if (getPatientMode('peripheral-' + i + '-' + shiftCode); as mode) {
+                                <span class="stats-special-mode">{{ mode }}</span>
+                              }
+                            </span>
+                            <app-patient-messages-icon
+                              [patientId]="patientId"
+                              [messageTypes]="getMessageTypesForPatient(patientId)"
+                              context="dialog"
+                              (click)="$event.stopPropagation()"
+                              (iconClick)="handleIconClick($event)"
+                            ></app-patient-messages-icon>
+                          </div>
+                          <div class="patient-ward-note">
+                            @if (isInpatientOrER('peripheral-' + i + '-' + shiftCode)) {
+                              @if (getPatientWardNumber(patientId)) {
+                                <span
+                                  class="ward-number ward-number-badge"
+                                  (click)="$event.stopPropagation(); promptWardNumber('peripheral-' + i + '-' + shiftCode)"
+                                >{{ getPatientWardNumber(patientId) }}</span>
+                              } @else {
+                                <button
+                                  class="ward-edit-icon"
+                                  (click)="$event.stopPropagation(); promptWardNumber('peripheral-' + i + '-' + shiftCode)"
+                                  [disabled]="isPageLocked()"
+                                >🛏️</button>
+                              }
+                            }
+                            @if (getCombinedNote('peripheral-' + i + '-' + shiftCode)) {
+                              <span class="patient-note">{{ getCombinedNote('peripheral-' + i + '-' + shiftCode) }}</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <!-- Mobile simplified view (always shown on mobile) -->
+      <div class="simplified-view mobile-and-print-only">
+        <table class="simplified-table">
+          <thead>
+            <tr>
+              <th class="col-bed">床號</th>
+              @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                <th>{{ getShiftDisplayName(shiftCode) }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (bedNum of sortedBedNumbers(); track bedNum) {
+              <tr>
+                <td class="col-bed">{{ bedNum }}</td>
+                @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                  <td
+                    [ngClass]="getPatientCellStyle('bed-' + bedNum + '-' + shiftCode)"
+                    (click)="handleSimplifiedCellClick('bed-' + bedNum + '-' + shiftCode)"
+                  >
+                    @if (currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId; as patientId) {
+                      <div class="patient-info-cell">
+                        <span class="patient-name-wrapper">{{ $any(patientMap().get(patientId))?.name }}</span>
+                      </div>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bed Grid (Desktop) -->
+      <div class="desktop-only">
+        <div class="dialysis-unit">
+          <!-- Left Wing -->
+          <div class="left-wing">
+            @for (row of layoutData.leftWingRows; track $index) {
+              <div class="bed-row">
+                @for (bedNum of row; track $index) {
+                  @if (bedNum === '\u7A7A') {
+                    <div class="bed unassigned">
+                      <div class="bed-header">未啟用</div>
+                    </div>
+                  } @else {
+                    <div
+                      class="bed"
+                      [class.hepatitis]="hepatitisBeds.includes(bedNum)"
+                      [class.aisle-side]="aisleSideBeds.includes(+bedNum)"
+                      [class.left-wing-bed]="true"
+                    >
+                      <div class="bed-header">{{ bedNum }}</div>
+                      @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                        <div
+                          class="shift-row"
+                          [ngClass]="getPatientCellStyle('bed-' + bedNum + '-' + shiftCode)"
+                          [class.split-shift]="shiftCode === SHIFT_CODES.NOON"
+                        >
+                          <div class="shift-label">{{ getShiftDisplayName(shiftCode).charAt(0) }}</div>
+                          <!-- Nurse team column -->
+                          @if (shiftCode === SHIFT_CODES.NOON) {
+                            <div class="nurse-split-column">
+                              <select
+                                class="nurse-team-select"
+                                [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'in')"
+                                (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'in')"
+                                [disabled]="isPageLocked()"
+                              >
+                                <option value="">-</option>
+                                @for (team of allTeams; track team) {
+                                  <option [value]="team">{{ team }}</option>
+                                }
+                              </select>
+                              <select
+                                class="nurse-team-select"
+                                [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'out')"
+                                (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'out')"
+                                [disabled]="isPageLocked()"
+                              >
+                                <option value="">-</option>
+                                @for (team of allTeams; track team) {
+                                  <option [value]="team">{{ team }}</option>
+                                }
+                              </select>
+                            </div>
+                          } @else {
+                            <select
+                              class="nurse-team-select"
+                              [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'single')"
+                              (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'single')"
+                              [disabled]="isPageLocked()"
+                            >
+                              <option value="">-</option>
+                              @for (team of (shiftCode === SHIFT_CODES.EARLY ? earlyTeams : lateTeams); track team) {
+                                <option [value]="team">{{ team }}</option>
+                              }
+                            </select>
+                          }
+                          <!-- Patient name cell (draggable) -->
+                          <div
+                            class="patient-name"
+                            [draggable]="!isPageLocked() && !!currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId"
+                            (click)="handleSlotClick('bed-' + bedNum + '-' + shiftCode)"
+                            (dragstart)="onBedDragStart($event, 'bed-' + bedNum + '-' + shiftCode)"
+                            (drop)="onDrop($event, 'bed-' + bedNum + '-' + shiftCode)"
+                            (dragover)="onDragOver($event)"
+                            (dragleave)="onDragLeave($event)"
+                          >
+                            @if (currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId) {
+                              <div class="patient-cell-layout">
+                                <div class="patient-name-text">
+                                  {{ getPatientName('bed-' + bedNum + '-' + shiftCode) }}
+                                  @if (getPatientMode('bed-' + bedNum + '-' + shiftCode); as mode) {
+                                    <span class="stats-special-mode-inline">{{ mode }}</span>
+                                  }
+                                </div>
+                                <div class="patient-icons-row">
+                                  @if (isInpatientOrER('bed-' + bedNum + '-' + shiftCode) && getPatientWardNumber(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId)) {
+                                    <span
+                                      class="ward-badge-inline"
+                                      (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                    >{{ getPatientWardNumber(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId) }}</span>
+                                  } @else if (isInpatientOrER('bed-' + bedNum + '-' + shiftCode)) {
+                                    <button
+                                      class="ward-icon-inline"
+                                      (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                      [disabled]="isPageLocked()"
+                                    >🛏️</button>
+                                  }
+                                  <app-patient-messages-icon
+                                    [patientId]="currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId"
+                                    [messageTypes]="getMessageTypesForPatient(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId)"
+                                    context="dialog"
+                                    (iconClick)="handleIconClick($event)"
+                                  ></app-patient-messages-icon>
+                                </div>
+                              </div>
+                            } @else {
+                              <span class="empty-slot-placeholder">+</span>
+                            }
+                          </div>
+                          <!-- Tag / Note -->
+                          <div class="patient-tag">
+                            {{ getCombinedNote('bed-' + bedNum + '-' + shiftCode) }}
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Aisle (Nursing Station) -->
+          <div class="aisle">護理站</div>
+
+          <!-- Right Wing -->
+          <div class="right-wing">
+            @for (row of layoutData.rightWingRows; track $index) {
+              <div class="bed-row">
+                @for (bedNum of row; track $index) {
+                  <div
+                    class="bed"
+                    [class.aisle-side]="aisleSideBeds.includes(+bedNum)"
+                    [class.right-wing-bed]="true"
+                  >
+                    <div class="bed-header">{{ bedNum }}</div>
+                    @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                      <div
+                        class="shift-row"
+                        [ngClass]="getPatientCellStyle('bed-' + bedNum + '-' + shiftCode)"
+                        [class.split-shift]="shiftCode === SHIFT_CODES.NOON"
+                      >
+                        <div class="shift-label">{{ getShiftDisplayName(shiftCode).charAt(0) }}</div>
+                        @if (shiftCode === SHIFT_CODES.NOON) {
+                          <div class="nurse-split-column">
+                            <select
+                              class="nurse-team-select"
+                              [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'in')"
+                              (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'in')"
+                              [disabled]="isPageLocked()"
+                            >
+                              <option value="">-</option>
+                              @for (team of allTeams; track team) {
+                                <option [value]="team">{{ team }}</option>
+                              }
+                            </select>
+                            <select
+                              class="nurse-team-select"
+                              [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'out')"
+                              (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'out')"
+                              [disabled]="isPageLocked()"
+                            >
+                              <option value="">-</option>
+                              @for (team of allTeams; track team) {
+                                <option [value]="team">{{ team }}</option>
+                              }
+                            </select>
+                          </div>
+                        } @else {
+                          <select
+                            class="nurse-team-select"
+                            [value]="getNurseTeam('bed-' + bedNum + '-' + shiftCode, 'single')"
+                            (change)="updateNurseTeam($event, 'bed-' + bedNum + '-' + shiftCode, 'single')"
+                            [disabled]="isPageLocked()"
+                          >
+                            <option value="">-</option>
+                            @for (team of (shiftCode === SHIFT_CODES.EARLY ? earlyTeams : lateTeams); track team) {
+                              <option [value]="team">{{ team }}</option>
+                            }
+                          </select>
+                        }
+                        <div
+                          class="patient-name"
+                          [draggable]="!isPageLocked() && !!currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId"
+                          (click)="handleSlotClick('bed-' + bedNum + '-' + shiftCode)"
+                          (dragstart)="onBedDragStart($event, 'bed-' + bedNum + '-' + shiftCode)"
+                          (drop)="onDrop($event, 'bed-' + bedNum + '-' + shiftCode)"
+                          (dragover)="onDragOver($event)"
+                          (dragleave)="onDragLeave($event)"
+                        >
+                          @if (currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId) {
+                            <div class="patient-cell-layout">
+                              <div class="patient-name-text">
+                                {{ getPatientName('bed-' + bedNum + '-' + shiftCode) }}
+                                @if (getPatientMode('bed-' + bedNum + '-' + shiftCode); as mode) {
+                                  <span class="stats-special-mode-inline">{{ mode }}</span>
+                                }
+                              </div>
+                              <div class="patient-icons-row">
+                                @if (isInpatientOrER('bed-' + bedNum + '-' + shiftCode) && getPatientWardNumber(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId)) {
+                                  <span
+                                    class="ward-badge-inline"
+                                    (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                  >{{ getPatientWardNumber(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId) }}</span>
+                                } @else if (isInpatientOrER('bed-' + bedNum + '-' + shiftCode)) {
+                                  <button
+                                    class="ward-icon-inline"
+                                    (click)="$event.stopPropagation(); promptWardNumber('bed-' + bedNum + '-' + shiftCode)"
+                                    [disabled]="isPageLocked()"
+                                  >🛏️</button>
+                                }
+                                <app-patient-messages-icon
+                                  [patientId]="currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId"
+                                  [messageTypes]="getMessageTypesForPatient(currentRecord.schedule['bed-' + bedNum + '-' + shiftCode]?.patientId)"
+                                  context="dialog"
+                                  (iconClick)="handleIconClick($event)"
+                                ></app-patient-messages-icon>
+                              </div>
+                            </div>
+                          } @else {
+                            <span class="empty-slot-placeholder">+</span>
+                          }
+                        </div>
+                        <div class="patient-tag">
+                          {{ getCombinedNote('bed-' + bedNum + '-' + shiftCode) }}
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Extra Sections: Peripheral beds -->
+        <div class="extra-sections">
+          <div class="peripheral-section">
+            <h2>外圍床位</h2>
+            <div class="peripheral-bed-container">
+              @for (i of peripheralBedRange(); track i) {
+                <div class="peripheral-bed">
+                  <div class="peripheral-header">外圍 {{ i }}</div>
+                  @for (shiftCode of ORDERED_SHIFT_CODES; track shiftCode) {
+                    <div
+                      class="peripheral-shift-row"
+                      [ngClass]="getPatientCellStyle('peripheral-' + i + '-' + shiftCode)"
+                    >
+                      <div class="shift-label">{{ getShiftDisplayName(shiftCode).charAt(0) }}</div>
+                      <div class="peripheral-bed-number">
+                        @if (currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId && isInpatientOrER('peripheral-' + i + '-' + shiftCode)) {
+                          @if (getPatientWardNumber(currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId)) {
+                            <span
+                              class="ward-number-badge"
+                              (click)="promptWardNumber('peripheral-' + i + '-' + shiftCode)"
+                            >{{ getPatientWardNumber(currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId) }}</span>
+                          } @else {
+                            <button
+                              class="ward-edit-icon"
+                              (click)="promptWardNumber('peripheral-' + i + '-' + shiftCode)"
+                              [disabled]="isPageLocked()"
+                            >🛏️</button>
+                          }
+                        }
+                      </div>
+                      <select
+                        class="nurse-team-select"
+                        [value]="getNurseTeam('peripheral-' + i + '-' + shiftCode, 'single')"
+                        (change)="updateNurseTeam($event, 'peripheral-' + i + '-' + shiftCode, 'single')"
+                        [disabled]="isPageLocked()"
+                      >
+                        <option value="">-</option>
+                        @for (team of allTeams; track team) {
+                          <option [value]="team">{{ team }}</option>
+                        }
+                      </select>
+                      <div
+                        class="peripheral-patient-name"
+                        [draggable]="!isPageLocked() && !!currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId"
+                        (click)="handleSlotClick('peripheral-' + i + '-' + shiftCode)"
+                        (dragstart)="onBedDragStart($event, 'peripheral-' + i + '-' + shiftCode)"
+                        (drop)="onDrop($event, 'peripheral-' + i + '-' + shiftCode)"
+                        (dragover)="onDragOver($event)"
+                        (dragleave)="onDragLeave($event)"
+                      >
+                        @if (currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId) {
+                          <span>{{ getPatientName('peripheral-' + i + '-' + shiftCode) }}</span>
+                          <app-patient-messages-icon
+                            [patientId]="currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId"
+                            [messageTypes]="getMessageTypesForPatient(currentRecord.schedule['peripheral-' + i + '-' + shiftCode]?.patientId)"
+                            context="dialog"
+                            (iconClick)="handleIconClick($event)"
+                          ></app-patient-messages-icon>
+                        } @else {
+                          <span class="empty-slot-placeholder">+</span>
+                        }
+                      </div>
+                      <div class="patient-tag">
+                        {{ getCombinedNote('peripheral-' + i + '-' + shiftCode) }}
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inpatient Sidebar -->
+    <app-inpatient-sidebar
+      [patients]="allPatients()"
+      [scheduledIds]="scheduledPatientIds"
+      [useDailyFilter]="true"
+      [dayOfWeek]="dayOfWeek()"
+      (dragStart)="onSidebarDragStart($event.event, $event.patient)"
+      [class.sidebar-locked]="isPageLocked()"
+      class="desktop-only"
+    ></app-inpatient-sidebar>
+  </div>
+
+  <!-- Alert Dialog -->
+  @if (isAlertDialogVisible()) {
+    <div class="dialog-overlay" (click)="isAlertDialogVisible.set(false)">
+      <div class="dialog-box" (click)="$event.stopPropagation()">
+        <h3>{{ alertDialogTitle() }}</h3>
+        <p style="white-space: pre-wrap;">{{ alertDialogMessage() }}</p>
+        <div class="dialog-actions">
+          <button class="btn btn-info" (click)="isAlertDialogVisible.set(false)">確定</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Confirm Dialog -->
+  @if (isConfirmDialogVisible()) {
+    <div class="dialog-overlay" (click)="handleCancel()">
+      <div class="dialog-box" (click)="$event.stopPropagation()">
+        <h3>確認操作</h3>
+        <p style="white-space: pre-wrap;">{{ confirmDialogMessage() }}</p>
+        <div class="dialog-actions">
+          <button class="btn" (click)="handleCancel()">取消</button>
+          <button class="btn btn-success" (click)="handleConfirm()">確定</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Bed Assignment Dialog -->
+<app-bed-assignment-dialog
+  [isVisible]="isAssignmentDialogVisible()"
+  title="智慧排床助理"
+  [allPatients]="allPatients()"
+  [bedLayout]="allBedNumbers"
+  [scheduleData]="currentRecord.schedule"
+  [targetDate]="formatDate(currentDate())"
+  [shifts]="ORDERED_SHIFT_CODES"
+  [freqMap]="freqToDays"
+  assignmentMode="singleDay"
+  [dayOfWeek]="dayOfWeek()"
+  (close)="isAssignmentDialogVisible.set(false)"
+  (assignBed)="handleAssignBed($event)"
+></app-bed-assignment-dialog>
+
+@if (isWardDialogVisible()) {
+  <app-ward-number-dialog
+    title="設定住院床號"
+    message="請輸入病人的住院病房床號"
+    [currentValue]="currentWardNumber()"
+    (confirm)="handleWardNumberConfirm($event)"
+    (cancel)="isWardDialogVisible.set(false)"
+  ></app-ward-number-dialog>
+}
+
+<app-inpatient-rounds-dialog
+  [isVisible]="isInpatientRoundsDialogVisible()"
+  [patientsOnSchedule]="todayInpatients"
+  [targetDate]="formatDate(currentDate())"
+  (closeEvent)="isInpatientRoundsDialogVisible.set(false)"
+  (saveEvent)="handleInpatientRoundsSave($event)"
+></app-inpatient-rounds-dialog>
+
+<app-icu-orders-dialog
+  [isVisible]="isIcuOrdersDialogVisible()"
+  [targetDate]="formatDate(currentDate())"
+  [schedule]="currentRecord.schedule"
+  [patientMap]="patientMap()"
+  [isEditable]="!isPageLocked()"
+  (closeEvent)="isIcuOrdersDialogVisible.set(false)"
+  (saveAndPrint)="handleIcuOrdersSave($event)"
+  (changeDateEvent)="handleIcuDateChange($event)"
+  (openOrderModal)="openOrderModalFromIcu($event)"
+  (openCrrtOrderModal)="openCrrtOrderModalFromIcu($event)"
+></app-icu-orders-dialog>
+
+@if (isOrderModalVisible() && editingPatientForOrder()) {
+  <app-dialysis-order-modal
+    [patient]="editingPatientForOrder()"
+    (close)="isOrderModalVisible.set(false)"
+    (save)="handleSaveOrder($event)"
+  ></app-dialysis-order-modal>
+}
+
+@if (isCRRTOrderModalVisible() && editingPatientForCRRT()) {
+  <app-crrt-order-modal
+    [isVisible]="isCRRTOrderModalVisible()"
+    [patientData]="editingPatientForCRRT()"
+    (closeEvent)="isCRRTOrderModalVisible.set(false)"
+    (saveEvent)="handleSaveCrrtOrder($event)"
+  ></app-crrt-order-modal>
+}
+
+<!-- Daily Records Summary Dialog (📋 班次總覽) -->
+@if (isRecordsSummaryDialogVisible()) {
+  <app-daily-records-summary-dialog
+    [isVisible]="isRecordsSummaryDialogVisible()"
+    [targetDate]="formatDate(currentDate())"
+    [shiftCode]="shiftCodeForDialog()"
+    [patientIds]="patientIdsForDialog()"
+    [patientInfoMap]="patientInfoMapForDialog()"
+    (closeEvent)="closeRecordsSummaryDialog()"
+  ></app-daily-records-summary-dialog>
+}
+
+<!-- Daily Injection List Dialog (💉 應打針劑) -->
+@if (isInjectionDialogVisible()) {
+  <app-daily-injection-list-dialog
+    [isVisible]="isInjectionDialogVisible()"
+    [injections]="allDailyInjections()"
+    [isLoading]="isInjectionLoading()"
+    [targetDate]="injectionDialogDate()"
+    [filterActive]="filterSpecificInjections()"
+    (closeEvent)="isInjectionDialogVisible.set(false)"
+    (filterActiveChange)="filterSpecificInjections.set($event)"
+  ></app-daily-injection-list-dialog>
+}
+
+<!-- Daily Draft List Dialog (📝 藥囑草稿) -->
+@if (isDraftDialogVisible()) {
+  <app-daily-draft-list-dialog
+    [isVisible]="isDraftDialogVisible()"
+    [isLoading]="isDraftLoading()"
+    [drafts]="dailyDrafts()"
+    [patientsInShift]="patientsForDraftDialog()"
+    [targetDate]="draftDialogDate()"
+    (closeEvent)="isDraftDialogVisible.set(false)"
+  ></app-daily-draft-list-dialog>
+}
+
+<!-- Patient Detail Modal (臨床查閱 病人總覽) -->
+@if (isDetailModalVisible() && selectedPatientForDetail()) {
+  <app-patient-detail-modal
+    [isVisible]="isDetailModalVisible()"
+    [patient]="selectedPatientForDetail()"
+    [slotList]="sortedSlotsForModal()"
+    [currentIndex]="currentPatientIndexForModal()"
+    [currentDate]="formatDate(currentDate())"
+    (closeEvent)="isDetailModalVisible.set(false)"
+    (switchPatientEvent)="switchPatient($event)"
+    (recordUpdated)="loadDataForDay(currentDate())"
+  ></app-patient-detail-modal>
+}
+
+<!-- Memo Display Dialog -->
+@if (isMemoDialogVisible() && selectedPatientForDialog()) {
+  <app-memo-display-dialog
+    [isVisible]="isMemoDialogVisible()"
+    [patientId]="selectedPatientForDialog()!.id"
+    [patientName]="selectedPatientForDialog()!.name"
+    (closeEvent)="closeMemoDialog()"
+  ></app-memo-display-dialog>
+}
+
+<!-- Condition Record Display Dialog -->
+@if (isConditionRecordDialogVisible() && selectedPatientForDialog()) {
+  <app-condition-record-display-dialog
+    [isVisible]="isConditionRecordDialogVisible()"
+    [patientId]="selectedPatientForDialog()!.id"
+    [patientName]="selectedPatientForDialog()!.name"
+    (closeEvent)="closeConditionRecordDialog()"
+  ></app-condition-record-display-dialog>
+}
+
+<!-- Auto-Assign Config Dialog -->
+<app-auto-assign-config-dialog
+  [isVisible]="isAutoAssignConfigVisible()"
+  (closeEvent)="isAutoAssignConfigVisible.set(false)"
+  (savedEvent)="isAutoAssignConfigVisible.set(false)"
+></app-auto-assign-config-dialog>

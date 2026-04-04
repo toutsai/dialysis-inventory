@@ -1,0 +1,946 @@
+/* =================================================================== */
+/* === 1. Base & Generic Styles === */
+/* =================================================================== */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  font-size: 1.5rem;
+  color: #333;
+  gap: 20px;
+  backdrop-filter: blur(2px);
+}
+.loading-spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid #3498db;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.page-container.is-locked .btn,
+.page-container.is-locked .add-btn,
+.page-container.is-locked input[type='date'] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.page-container.is-locked button:disabled,
+.page-container.is-locked .btn:disabled {
+  pointer-events: none;
+}
+.page-container.is-locked .page-main-content {
+  cursor: not-allowed;
+}
+.page-container.is-locked .schedule-content,
+.page-container.is-locked .sidebar-locked {
+  background-color: #f5f5f5;
+}
+:host ::ng-deep .is-locked [draggable='true'],
+:host ::ng-deep .is-locked [contenteditable='true'],
+.is-locked .nurse-team-select {
+  cursor: not-allowed;
+}
+:host ::ng-deep .is-locked .memo-icon-inline,
+:host ::ng-deep .is-locked .memo-icon-wrapper,
+:host ::ng-deep .is-locked .messages-icon-container {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.page-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  padding: 10px;
+}
+.page-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 10;
+}
+.page-main-content {
+  flex-grow: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+.schedule-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+.inpatient-sidebar {
+  flex-shrink: 0;
+  width: 240px;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.header-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.page-title {
+  font-size: 32px;
+  margin: 0;
+  white-space: nowrap;
+}
+.date-navigator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.current-date-text,
+.weekday-display {
+  font-size: 26px;
+  font-weight: bold;
+}
+.weekday-display {
+  color: var(--primary-color, #007bff);
+}
+.status-indicator {
+  font-weight: bold;
+  color: #6c757d;
+}
+.controls-panel {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 4px 0;
+  gap: 8px;
+}
+.controls-left,
+.controls-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.controls-left > button {
+  margin-right: 6px;
+}
+.controls-left > button:last-child {
+  margin-right: 0;
+}
+.btn,
+button {
+  padding: 8px 15px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #fff;
+  transition: all 0.2s ease-in-out;
+}
+.btn-success {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+.btn-success:hover:not(:disabled) {
+  background-color: #218838;
+}
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+  border-color: #17a2b8;
+}
+.btn-info:hover:not(:disabled) {
+  background-color: #138496;
+}
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+  border-color: #ffc107;
+}
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+}
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #545b62;
+}
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.controls-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.controls-left {
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* =================================================================== */
+/* === 2. Patient Status & Tag Colors === */
+/* =================================================================== */
+.shift-row.status-opd,
+.peripheral-shift-row.status-opd,
+.simplified-table td.status-opd {
+  background-color: var(--green-bg, #e8f5e9);
+}
+.shift-row.status-ipd,
+.peripheral-shift-row.status-ipd,
+.simplified-table td.status-ipd {
+  background-color: var(--red-bg, #ffebee);
+}
+.shift-row.status-er,
+.peripheral-shift-row.status-er,
+.simplified-table td.status-er {
+  background-color: var(--purple-bg, #f3e5f5);
+}
+.shift-row.status-biweekly,
+.peripheral-shift-row.status-biweekly,
+.simplified-table td.status-biweekly {
+  background-color: #ffcc80;
+}
+.shift-row.status-deleted,
+.peripheral-shift-row.status-deleted,
+.simplified-table td.status-deleted {
+  background-color: #e0e0e0;
+  color: #9e9e9e;
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.shift-row.tag-chou,
+.peripheral-shift-row.tag-chou,
+.simplified-table td.tag-chou {
+  background-color: #658ee0;
+}
+.shift-row.tag-new,
+.peripheral-shift-row.tag-new,
+.simplified-table td.tag-new {
+  background-color: #f5ec8e;
+}
+.simplified-table td[class*='status-'] .patient-mrn-name,
+.simplified-table td[class*='tag-'] .patient-mrn-name {
+  color: #212529;
+  font-weight: 600;
+}
+.simplified-table td[class*='status-'] .patient-note,
+.simplified-table td[class*='tag-'] .patient-note {
+  color: #dc3545;
+}
+
+/* =================================================================== */
+/* === 3. Bed Grid Styles === */
+/* =================================================================== */
+.dialysis-unit {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+}
+.aisle {
+  writing-mode: vertical-lr;
+  text-align: center;
+  padding: 20px 5px;
+  background-color: #e9ecef;
+  border-radius: 8px;
+  font-size: 1.5em;
+  letter-spacing: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+.left-wing,
+.right-wing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bed-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.bed,
+.nursing-station,
+.peripheral-bed {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease-in-out;
+}
+.bed {
+  min-height: 160px;
+}
+.nursing-station {
+  background-color: #f0f4c3;
+  border: 2px dashed #afb42b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #558b2f;
+  grid-column: span 3;
+  padding: 40px 0;
+}
+.bed-header,
+.peripheral-header {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  font-weight: bold;
+  padding: 6px;
+  text-align: center;
+  font-size: 1em;
+}
+.shift-row,
+.peripheral-shift-row {
+  position: relative;
+  display: grid;
+  align-items: stretch;
+  border-top: 1px solid #e0e0e0;
+  transition: background-color 0.3s;
+}
+.shift-row {
+  grid-template-columns: 28px 50px 1fr 40px;
+}
+.peripheral-shift-row {
+  grid-template-columns: 28px 70px 80px 1fr 50px;
+}
+.shift-label {
+  background-color: #f5f5f5;
+  font-size: 0.8em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #e0e0e0;
+}
+.shift-row > div,
+.shift-row > select,
+.peripheral-shift-row > div,
+.peripheral-shift-row > select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  min-height: 48px;
+  border-left: 1px solid #e0e0e0;
+  word-break: break-all;
+  text-align: center;
+}
+.patient-tag {
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 6px;
+  color: #dc3545;
+  font-weight: bold;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ward-badge-inline {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.75em;
+  font-weight: bold;
+  margin-left: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.2s;
+}
+.ward-badge-inline:hover {
+  background-color: #0056b3;
+}
+.ward-icon-inline {
+  font-size: 0.85em;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #e65100;
+  opacity: 0.6;
+  margin-left: 4px;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+.ward-icon-inline:hover:not(:disabled) {
+  opacity: 1;
+}
+.ward-icon-inline:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+.nurse-team-select {
+  padding: 4px;
+  border: none;
+  font-size: 0.8em;
+  width: 100%;
+  background: transparent;
+  border-radius: 0;
+  appearance: none;
+  text-align: center;
+}
+.shift-row.split-shift .nurse-split-column {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.nurse-split-column .nurse-team-select {
+  flex-grow: 1;
+  height: 50%;
+}
+.nurse-split-column .nurse-team-select:first-child {
+  border-bottom: 1px solid #e0e0e0;
+}
+.bed.hepatitis .bed-header {
+  background-color: var(--hepatitis-bg, #fffde7);
+  color: #af8203;
+}
+.bed.unassigned .bed-header {
+  background-color: #bdbdbd;
+  color: #424242;
+}
+.bed.unassigned .shift-row {
+  display: none;
+}
+.bed.aisle-side.right-wing-bed {
+  border-left: 5px solid #4caf50;
+}
+.bed.aisle-side.left-wing-bed {
+  border-right: 5px solid #4caf50;
+}
+.patient-name,
+.peripheral-patient-name {
+  font-size: 1.1em;
+  font-weight: bold;
+  padding: 4px 6px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  gap: 4px;
+}
+.patient-name > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.empty-slot-placeholder {
+  color: #adb5bd;
+  font-size: 1.5rem;
+  user-select: none;
+  transition: color 0.2s;
+}
+.patient-name:hover .empty-slot-placeholder,
+.peripheral-patient-name:hover .empty-slot-placeholder {
+  color: #007bff;
+}
+.patient-name.drag-over,
+.peripheral-patient-name.drag-over {
+  background-color: #c8e6c9 !important;
+  border: 2px dashed #4caf50;
+}
+.extra-sections {
+  margin-top: 30px;
+}
+.peripheral-section {
+  margin-bottom: 20px;
+}
+.peripheral-bed-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 10px;
+}
+.peripheral-bed .peripheral-header {
+  background-color: #fce4ec;
+  color: #c2185b;
+}
+.patient-cell-layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  line-height: 1.2;
+}
+.patient-name-text {
+  font-weight: bold;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.patient-icons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.patient-name,
+.peripheral-patient-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+.mobile-and-print-only {
+  display: none;
+}
+
+/* =================================================================== */
+/* === 4. Simplified View Styles === */
+/* =================================================================== */
+.view-toggle-btn {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  padding: 8px 15px;
+  font-weight: 500;
+}
+.view-toggle-btn:hover {
+  background-color: #dee2e6;
+}
+.toggle-icon {
+  transition: transform 0.2s ease-in-out;
+}
+.simplified-view-wrapper.desktop-only {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(248, 249, 250, 0.97);
+  z-index: 20;
+  padding: 1rem;
+  overflow-y: auto;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.simplified-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  table-layout: fixed;
+}
+.simplified-table th,
+.simplified-table td {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+  text-align: center;
+  vertical-align: top;
+}
+.simplified-table th {
+  background-color: #e9ecef;
+  font-weight: 600;
+}
+.simplified-table .col-bed {
+  font-weight: bold;
+  background-color: #f8f9fa;
+  width: 80px;
+}
+.patient-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  cursor: pointer;
+}
+.patient-mrn-name {
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.patient-note {
+  font-size: 0.85rem;
+  color: #dc3545;
+  font-weight: 500;
+}
+.patient-ward-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ward-number {
+  font-weight: bold;
+  background-color: #ffc107;
+  color: #333;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.patient-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.patient-name-wrapper:hover {
+  background-color: #e9ecef;
+}
+.shift-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.summary-icon-btn-table {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.2rem;
+  opacity: 0.6;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+.summary-icon-btn-table:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+.summary-icon-btn-table .fa-clipboard-list {
+  color: #1976d2;
+}
+.summary-icon-btn-table .fa-syringe {
+  color: #e53935;
+}
+.summary-icon-btn-table .fa-file-medical {
+  color: #43a047;
+}
+.summary-icon-btn-table:hover i {
+  filter: brightness(0.8);
+}
+.stats-special-mode {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 1px 5px;
+  background-color: var(--red-bg, #ffebee);
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9em;
+  line-height: 1.2;
+}
+.stats-special-mode-inline {
+  display: inline-block;
+  vertical-align: baseline;
+  margin-left: 4px;
+  color: #c62828;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+.medical-record-number {
+  cursor: copy;
+  transition: color 0.2s;
+  color: #6c757d;
+}
+.medical-record-number:hover {
+  color: #007bff;
+  text-decoration: underline;
+}
+.ward-number-display {
+  font-weight: bold;
+  color: #007bff;
+  margin-right: 8px;
+}
+.peripheral-bed-number {
+  font-size: 0.9em;
+  min-width: 80px;
+  padding: 4px 8px;
+  border-left: 1px solid #e0e0e0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.peripheral-bed-number:focus {
+  outline: 2px solid #007bff;
+  outline-offset: -2px;
+  background-color: #f0f8ff;
+}
+.peripheral-bed-number[contenteditable='false'] {
+  background-color: #f5f5f5;
+}
+.peripheral-bed-number .ward-number-badge {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.peripheral-bed-number .ward-number-badge:hover {
+  background-color: #0056b3;
+}
+.peripheral-bed-number .ward-edit-icon {
+  font-size: 0.9em;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+/* Dialog styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.dialog-box {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.dialog-box h3 {
+  margin: 0 0 16px;
+}
+.dialog-box p {
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* =================================================================== */
+/* === 5. Responsive (Media Queries) === */
+/* =================================================================== */
+
+/* Mobile elements hidden on desktop */
+.mobile-only {
+  display: none !important;
+}
+
+/* Desktop styles */
+@media screen and (min-width: 993px) {
+  .desktop-only .simplified-table td {
+    padding: 0.6rem;
+    font-size: 1rem;
+  }
+  .desktop-only .simplified-table .patient-mrn-name {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.5em;
+    flex-wrap: nowrap;
+  }
+  .desktop-only .simplified-table .patient-ward-note {
+    gap: 0.5em;
+  }
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Mobile styles - only below 992px */
+@media screen and (max-width: 992px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-and-print-only {
+    display: block;
+  }
+  .mobile-only {
+    display: inline-flex !important;
+    align-items: center;
+  }
+  .page-container {
+    padding: 0;
+  }
+  .page-header {
+    padding: 0.5rem 0.75rem;
+    background-color: #fff;
+  }
+  .page-main-content {
+    display: block;
+    overflow-y: auto;
+  }
+  .schedule-content {
+    padding: 0;
+  }
+  .simplified-view {
+    padding: 0.5rem;
+  }
+  .header-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .toolbar-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .toolbar-left .page-title {
+    font-size: 1.3rem;
+    margin: 0;
+    flex: 1;
+  }
+  .toolbar-left .mobile-only {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .mobile-btn-text {
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+  }
+  .toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+  .date-navigator {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+  .date-navigator .current-date-text,
+  .date-navigator .weekday-display {
+    font-size: 1.1rem;
+  }
+  .date-navigator .btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+  .page-title {
+    text-align: left;
+  }
+  .simplified-table {
+    font-size: 0.8rem;
+  }
+  .simplified-table th,
+  .simplified-table td {
+    padding: 0.3rem;
+  }
+  .simplified-table .col-bed {
+    width: 55px;
+    font-size: 0.75rem;
+  }
+  .patient-info-cell {
+    font-size: 0.75rem;
+  }
+  .patient-note {
+    font-size: 0.7rem;
+  }
+  .summary-icon-btn-table {
+    width: 24px;
+    height: 24px;
+    font-size: 0.9rem;
+  }
+  .shift-header-content {
+    gap: 4px;
+  }
+}
+
+/* Extra small (phone portrait) */
+@media screen and (max-width: 576px) {
+  .page-header {
+    padding: 0.4rem 0.5rem;
+  }
+  .toolbar-left .page-title {
+    font-size: 1.1rem;
+  }
+  .mobile-btn-text {
+    display: none;
+  }
+  .toolbar-left .mobile-only {
+    padding: 0.35rem 0.5rem;
+    min-width: 36px;
+  }
+  .date-navigator {
+    font-size: 0.85rem;
+  }
+  .date-navigator .current-date-text,
+  .date-navigator .weekday-display {
+    font-size: 0.95rem;
+  }
+  .date-navigator .btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}

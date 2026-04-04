@@ -1,0 +1,165 @@
+.dialog-container.large {
+  max-width: 95%;
+  width: 1400px;
+}
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+.dialog-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+}
+.dialog-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+}
+.dialog-controls {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  text-align: right;
+}
+.btn-primary {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #198754;
+  color: white;
+}
+.btn-primary:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+.dialog-body {
+  overflow: auto;
+  padding: 0;
+}
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.table-wrapper {
+  width: 100%;
+}
+.draft-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  /* ✨ 核心修改 1: 讓表格佈局由內容決定 */
+  table-layout: auto;
+}
+.draft-table th,
+.draft-table td {
+  border-bottom: 1px solid #dee2e6;
+  border-right: 1px solid #e9ecef;
+  padding: 0.75rem 0.6rem; /* 微調左右內距，讓表格更緊湊 */
+  text-align: center;
+  white-space: nowrap;
+}
+.draft-table th {
+  background-color: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.draft-table .group-header-row th {
+  top: 0;
+  background-color: #e9ecef;
+  font-weight: bold;
+}
+.draft-table .med-header-row th {
+  top: 45px;
+  font-size: 0.9em;
+  /* ✨ 核心修改 2: 為藥物欄位設定一個最小寬度，避免過窄 */
+  min-width: 110px;
+}
+.draft-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: #f8f9fa;
+  border-right: 2px solid #ced4da;
+}
+.draft-table thead .sticky-col {
+  z-index: 3;
+}
+
+/* ✨ 核心修改 3: 明確設定固定欄的寬度和位置 */
+.draft-table .sticky-col.name-col:nth-child(1) {
+  width: 80px;
+  min-width: 80px;
+  left: 0;
+}
+.draft-table .sticky-col.name-col:nth-child(2) {
+  width: 100px;
+  min-width: 100px;
+  left: 80px; /* 等於第一欄的寬度 */
+}
+
+.empty-cell {
+  color: #adb5bd;
+}
+.has-data {
+  background-color: #e8f5e9;
+  font-weight: bold;
+}
+.unit {
+  font-size: 0.8em;
+  color: #6c757d;
+  font-weight: normal;
+  margin-left: 2px;
+}
+.freq-note {
+  font-size: 0.8em;
+  color: #6c757d;
+  font-weight: normal;
+  margin-left: 4px;
+  white-space: nowrap;
+}

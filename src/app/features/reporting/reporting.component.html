@@ -1,0 +1,215 @@
+<div class="reporting-view-container">
+  <h1 class="page-title">統計報表</h1>
+
+  <!-- Report Type Buttons -->
+  <div class="report-type-bar">
+    @for (rt of reportTypes; track rt.value) {
+      <button
+        class="report-type-btn"
+        [class.active]="reportType() === rt.value"
+        (click)="selectReportType(rt.value)"
+      >
+        <span class="rt-icon">{{ rt.icon }}</span>
+        <span class="rt-label">{{ rt.label }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Date Selector -->
+  <div class="date-selector-bar">
+    @if (reportType() === 'daily') {
+      <button class="date-nav-btn" (click)="shiftDate(-1)">◀</button>
+      <input
+        type="date"
+        class="date-input"
+        [ngModel]="selectedDate()"
+        (ngModelChange)="onDateChange($event)"
+      />
+      <button class="date-nav-btn" (click)="shiftDate(1)">▶</button>
+    }
+    @if (reportType() === 'monthly' || reportType() === 'staffing_monthly') {
+      <button class="date-nav-btn" (click)="shiftMonth(-1)">◀</button>
+      <input
+        type="month"
+        class="date-input"
+        [ngModel]="selectedMonth()"
+        (ngModelChange)="onMonthChange($event)"
+      />
+      <button class="date-nav-btn" (click)="shiftMonth(1)">▶</button>
+    }
+    @if (reportType() === 'yearly') {
+      <button class="date-nav-btn" (click)="shiftYear(-1)">◀</button>
+      <span class="year-display">{{ selectedYear() }}</span>
+      <button class="date-nav-btn" (click)="shiftYear(1)">▶</button>
+    }
+
+    <button class="export-btn" (click)="exportToExcel()" [disabled]="isLoading() || noData()">
+      📥 匯出 Excel
+    </button>
+  </div>
+
+  <!-- Chart Area -->
+  <div class="chart-section">
+    @if (isLoading()) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <p>載入中...</p>
+      </div>
+    }
+    @if (!isLoading() && noData() && hasGenerated()) {
+      <div class="empty-state">
+        <span class="empty-icon">📊</span>
+        <p>此期間無資料</p>
+      </div>
+    }
+    @if (!isLoading() && !hasGenerated()) {
+      <div class="empty-state">
+        <span class="empty-icon">📈</span>
+        <p>選擇報表類型以顯示圖表</p>
+      </div>
+    }
+    <div class="chart-wrapper" [class.hidden]="isLoading() || noData()">
+      <div class="chart-header">
+        <h2 class="chart-title">{{ reportTitle() }}</h2>
+        @if (reportType() !== 'staffing_monthly') {
+          <button class="chart-mode-btn" (click)="toggleChartMode()">
+            {{ chartMode() === 'absolute' ? '📊 切換百分比' : '📐 切換數量' }}
+          </button>
+        }
+      </div>
+      <canvas #chartCanvas></canvas>
+    </div>
+  </div>
+
+  <!-- Data Table (collapsible) -->
+  @if (!isLoading() && !noData() && hasGenerated()) {
+    <div class="table-section">
+      <button class="toggle-table-btn" (click)="toggleTable()">
+        {{ showTable() ? '▲ 隱藏明細表' : '▼ 顯示明細表' }}
+      </button>
+      @if (showTable()) {
+        <div class="results-table-container">
+          <!-- 人次日報表 -->
+          @if (reportType() === 'daily') {
+            <table class="results-table daily-table">
+              <thead>
+                <tr>
+                  <th>透析模式</th>
+                  <th>類別</th>
+                  @for (header of dailyTableHeaders(); track header) {
+                    <th>{{ header }}</th>
+                  }
+                  <th>當日總計</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of dailyTableRows(); track $index) {
+                  <tr [class.total-row]="row.mode === '每班總計'">
+                    <td>{{ row.mode }}</td>
+                    <td>{{ row.status }}</td>
+                    @for (count of row.shiftCounts; track $index) {
+                      <td>{{ count > 0 ? count : '' }}</td>
+                    }
+                    <td class="total-col">{{ row.dailyTotal }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          <!-- 人次月報表 -->
+          @if (reportType() === 'monthly') {
+            <table class="results-table monthly-table">
+              <thead>
+                <tr>
+                  <th class="sticky-col first-col">透析模式</th>
+                  <th class="sticky-col second-col">類別</th>
+                  @for (day of monthlyTableHeaders(); track day) {
+                    <th class="day-col">{{ day }}</th>
+                  }
+                  <th class="total-col">月總計</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of monthlyTableRows(); track $index) {
+                  <tr [class.total-row]="row.mode === '每日總計'">
+                    <td class="sticky-col first-col">{{ row.mode }}</td>
+                    <td class="sticky-col second-col">{{ row.status }}</td>
+                    @for (count of row.dailyCounts; track $index) {
+                      <td class="day-col">{{ count > 0 ? count : '' }}</td>
+                    }
+                    <td class="total-col">{{ row.monthlyTotal }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          <!-- 人次年報表 -->
+          @if (reportType() === 'yearly') {
+            <table class="results-table yearly-table">
+              <thead>
+                <tr>
+                  <th>透析模式</th>
+                  <th>類別</th>
+                  @for (header of yearlyTableHeaders(); track header) {
+                    <th>{{ header }}</th>
+                  }
+                  <th>年總計</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of yearlyTableRows(); track $index) {
+                  <tr [class.total-row]="row.mode === '每月總計'">
+                    <td>{{ row.mode }}</td>
+                    <td>{{ row.status }}</td>
+                    @for (count of row.monthlyCounts; track $index) {
+                      <td>{{ count > 0 ? count : '' }}</td>
+                    }
+                    <td class="total-col">{{ row.yearlyTotal }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          <!-- 護理人力月報表 -->
+          @if (reportType() === 'staffing_monthly') {
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th rowspan="2">日期</th>
+                  <th colspan="2">第一班 (早班)</th>
+                  <th colspan="2">第二班 (午班)</th>
+                  <th colspan="2">第三班 (晚班)</th>
+                  <th colspan="2">整日</th>
+                </tr>
+                <tr>
+                  <th>護理人力</th><th>護病比</th>
+                  <th>護理人力</th><th>護病比</th>
+                  <th>護理人力</th><th>護病比</th>
+                  <th>護理人力</th><th>護病比</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of staffingTableRows(); track $index) {
+                  <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ row.earlyStaff }}</td>
+                    <td>{{ row.earlyRatio }}</td>
+                    <td>{{ row.noonStaff }}</td>
+                    <td>{{ row.noonRatio }}</td>
+                    <td>{{ row.lateStaff }}</td>
+                    <td>{{ row.lateRatio }}</td>
+                    <td class="total-col">{{ row.totalStaff }}</td>
+                    <td class="total-col">{{ row.totalRatio }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

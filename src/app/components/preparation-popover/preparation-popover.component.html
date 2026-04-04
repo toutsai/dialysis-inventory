@@ -1,0 +1,49 @@
+@if (isVisible) {
+  <div #popoverRef class="preparation-popover" [ngStyle]="popoverStyle">
+    @if (hasPatients) {
+      <div class="popover-content">
+        <table>
+          <thead>
+            <tr>
+              <!-- ✨ 修改：調整欄位順序和內容 -->
+              <th>姓名</th>
+              <th>AK</th>
+              <th>Ca</th>
+              <th>Heparin</th>
+              <th>BF</th>
+              <th>通路/穿刺針</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (patient of patients; track patient.id) {
+              <tr>
+                <!-- ✨ 核心修改：讓姓名可以點擊，並觸發事件 -->
+                <td class="name-cell" (click)="handleNameClick(patient)" title="點擊以編輯此病人醫囑">
+                  {{ patient.name }}
+                </td>
+                <td>{{ patient.dialysisOrders?.ak || '–' }}</td>
+                <td>{{ patient.dialysisOrders?.dialysateCa || '–' }}</td>
+                <td>
+                  {{ patient.dialysisOrders?.heparinInitial ?? '–' }}/{{ patient.dialysisOrders?.heparinMaintenance ?? '–' }}
+                </td>
+                <td>{{ patient.dialysisOrders?.bloodFlow ?? '–' }}</td>
+                <td>
+                  {{ patient.dialysisOrders?.vascAccess || '–' }}
+                  @if (
+                      patient.dialysisOrders?.arterialNeedle || patient.dialysisOrders?.venousNeedle
+                    ) {
+                    <span>
+                      ({{ patient.dialysisOrders?.arterialNeedle || 'N/A' }}/{{ patient.dialysisOrders?.venousNeedle || 'N/A' }})
+                    </span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="empty-state">沒有需要備物的病人</div>
+    }
+  </div>
+}

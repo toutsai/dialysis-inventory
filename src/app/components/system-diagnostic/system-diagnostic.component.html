@@ -1,0 +1,93 @@
+<div
+  style="
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 20px;
+    font-family: monospace;
+  "
+>
+  <h2 style="color: #dc3545">🩺 系統診斷報告</h2>
+
+  <div style="margin: 20px 0">
+    <button
+      (click)="runFullDiagnostic"
+      style="
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      "
+    >
+      🔍 執行完整診斷
+    </button>
+  </div>
+
+  @if (diagnosticResults.length > 0) {
+    <div style="margin-top: 20px">
+      @for (result of diagnosticResults; track index; let index = $index) {
+        <div
+          style="
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+          "
+        >
+          <h4
+            [ngStyle]="{
+              color:
+                result.status === 'success'
+                  ? '#28a745'
+                  : result.status === 'error'
+                    ? '#dc3545'
+                    : '#ffc107',
+            }"
+          >
+            {{ result.status === 'success' ? '✅' : result.status === 'error' ? '❌' : '⚠️' }}
+            {{ result.title }}
+          </h4>
+          <div style="margin: 10px 0"><strong>狀態:</strong> {{ result.status }}</div>
+          <div style="margin: 10px 0">
+            <strong>詳細資訊:</strong>
+            <pre
+              style="
+                background: #f8f9fa;
+                padding: 10px;
+                border-radius: 4px;
+                overflow-x: auto;
+                white-space: pre-wrap;
+              "
+              >{{ result.details }}</pre
+            >
+          </div>
+          @if (result.recommendations) {
+            <div style="margin: 10px 0">
+              <strong>建議:</strong>
+              <ul>
+                @for (rec of result.recommendations; track rec) {
+                  <li>{{ rec }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div style="margin-top: 30px; padding: 15px; background: #e9ecef; border-radius: 4px">
+    <h3>📋 診斷項目清單</h3>
+    <ul style="margin: 10px 0">
+      <li>✅ 檢查 scheduleService.js 是否正確更新</li>
+      <li>✅ 驗證優化函式是否可用</li>
+      <li>✅ 測試 useCache composable</li>
+      <li>✅ 測試 useErrorHandler composable</li>
+      <li>✅ 檢查系統是否在使用新版本</li>
+      <li>✅ 尋找仍在使用舊版本的地方</li>
+    </ul>
+  </div>
+</div>

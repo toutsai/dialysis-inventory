@@ -1,0 +1,32 @@
+<div class="memo-panel-content">
+  <!-- isLoading 現在也來自 store -->
+  @if (taskStore.isLoading) {
+    <div class="loading-state">正在讀取備忘事項...</div>
+  <!-- 將 memos.length 改為 pendingMemos.length -->
+  } @else if (pendingMemos.length > 0) {
+    <ul class="memo-list-in-panel">
+      @for (memo of pendingMemos; track memo.id) {
+        <li class="memo-item-in-panel">
+          <p class="memo-text">
+            <!-- 新增：顯示訊息圖示，更一致 -->
+            <span class="message-type-icon" [title]="memo.type || '一般交班'">
+              {{ getMessageTypeIcon(memo.type) }}
+            </span>
+            {{ memo.content }}
+          </p>
+          <div class="memo-meta-in-panel">
+            <!-- ✨ 核心修正：memo.createdAt 現在保證是 Date 物件，可以直接使用 -->
+            <span>建立於: {{ memo.createdAt.toLocaleDateString() }}</span>
+            @if (memo.targetDate) {
+              <span
+                >| 目標日期: <strong>{{ memo.targetDate }}</strong></span
+              >
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="empty-state">該病人沒有待處理的備忘事項。</div>
+  }
+</div>

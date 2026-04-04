@@ -1,0 +1,268 @@
+/* 所有 STYLE 內容完全不變 */
+.search-container {
+  position: relative;
+  display: inline-block;
+}
+.patient-search-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 220px;
+  height: 45px;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+.patient-search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.search-results li {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.search-results li:last-child {
+  border-bottom: none;
+}
+.search-results li:hover {
+  background-color: #f0f0f0;
+}
+@keyframes highlight-animation {
+  0% {
+    background-color: #fffbe3;
+    outline: 3px solid #f8c000;
+  }
+  100% {
+    background-color: transparent;
+    outline: 3px solid transparent;
+  }
+}
+::ng-deep .highlight-flash {
+  animation: highlight-animation 2s ease-out;
+}
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  padding: 10px;
+}
+.page-header {
+  border-bottom: 1px solid #dee2e6;
+  padding: 0 0 20px 0;
+  flex-shrink: 0;
+}
+.header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.toolbar-left,
+.main-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.page-title {
+  margin: 0;
+  font-size: 32px;
+  color: #333;
+}
+.date-navigator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.week-display-text {
+  font-weight: bold;
+  font-size: 26px;
+  white-space: nowrap;
+}
+.page-main-content {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
+.schedule-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.stats-toolbar-wrapper {
+  flex-shrink: 0;
+  padding: 0px 8px 8px 0;
+  box-sizing: border-box;
+  transition: padding-left 0.2s ease-in-out;
+}
+.schedule-table-component {
+  flex-grow: 1;
+  overflow: auto;
+  border-radius: 8px;
+}
+.status-text {
+  font-style: italic;
+  color: #6c757d;
+}
+.btn,
+.btn-save,
+button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn:hover,
+.btn-save:not(:disabled):hover {
+  border-color: #888;
+  background-color: #e9ecef;
+}
+.btn-save {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+.btn-save:hover {
+  background-color: #218838;
+}
+.btn-save:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.btn.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+  border-color: #ffc107;
+  font-size: 1rem;
+}
+.btn.btn-info {
+  background-color: #17a2b8;
+  color: white;
+  border-color: #17a2b8;
+  font-size: 1rem;
+}
+::ng-deep .schedule-slot.status-opd {
+  background-color: var(--green-bg, #e8f5e9);
+}
+::ng-deep .schedule-slot.status-ipd {
+  background-color: var(--red-bg, #ffebee);
+}
+::ng-deep .schedule-slot.status-er {
+  background-color: var(--purple-bg, #f3e5f5);
+}
+::ng-deep .schedule-slot.status-biweekly {
+  background-color: #ffcc80;
+}
+::ng-deep .schedule-slot.tag-chou {
+  background-color: #658ee0;
+}
+::ng-deep .schedule-slot.tag-new {
+  background-color: #f5ec8e;
+}
+::ng-deep .schedule-slot.tag-huan {
+  background-color: #e0f7fa;
+}
+::ng-deep .schedule-slot.tag-liang {
+  background-color: #fff3e0;
+}
+::ng-deep .schedule-slot.tag-b {
+  background-color: #fff9c4;
+}
+::ng-deep .shift-row.status-opd,
+::ng-deep .peripheral-shift-row.status-opd {
+  background-color: #e8f5e9;
+}
+::ng-deep .shift-row.status-ipd,
+::ng-deep .peripheral-shift-row.status-ipd {
+  background-color: #ffebee;
+}
+::ng-deep .shift-row.status-er,
+::ng-deep .peripheral-shift-row.status-er {
+  background-color: #f3e5f5;
+}
+::ng-deep .shift-row.status-biweekly,
+::ng-deep .peripheral-shift-row.status-biweekly {
+  background-color: #ffcc80;
+}
+::ng-deep .shift-row.tag-chou,
+::ng-deep .peripheral-shift-row.tag-chou {
+  background-color: #658ee0;
+}
+::ng-deep .shift-row.tag-new,
+::ng-deep .peripheral-shift-row.tag-new {
+  background-color: #f5ec8e;
+}
+::ng-deep .shift-row.tag-huan,
+::ng-deep .peripheral-shift-row.tag-huan {
+  background-color: #e0f7fa;
+}
+::ng-deep .shift-row.tag-liang,
+::ng-deep .peripheral-shift-row.tag-liang {
+  background-color: #fff3e0;
+}
+::ng-deep .shift-row.tag-b,
+::ng-deep .peripheral-shift-row.tag-b {
+  background-color: #fff9c4;
+}
+::ng-deep .patient-item.status-opd {
+  background-color: #e8f5e9;
+}
+::ng-deep .patient-item.status-ipd {
+  background-color: #ffebee;
+}
+::ng-deep .patient-item.status-er {
+  background-color: #f3e5f5;
+}
+::ng-deep .patient-item.status-biweekly {
+  background-color: #ffcc80;
+}
+::ng-deep .patient-item.tag-chou {
+  background-color: #658ee0;
+}
+::ng-deep .patient-item.tag-new {
+  background-color: #f5ec8e;
+}
+::ng-deep .patient-item.tag-huan {
+  background-color: #e0f7fa;
+}
+::ng-deep .patient-item.tag-liang {
+  background-color: #fff3e0;
+}
+::ng-deep .patient-item.tag-b {
+  background-color: #fff9c4;
+}
+.main-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.sidebar-locked {
+  pointer-events: none;
+  opacity: 0.6;
+}

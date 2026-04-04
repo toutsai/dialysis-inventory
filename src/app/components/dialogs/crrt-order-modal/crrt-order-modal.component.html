@@ -1,0 +1,234 @@
+@if (isVisible) {
+  <div class="modal-overlay">
+    <div class="modal-container">
+      <header class="modal-header">
+        <h2>CRRT 醫囑開立</h2>
+        <button (click)="closeModal()" class="btn-close">×</button>
+      </header>
+
+      <div class="modal-body">
+        <!-- 病人基本資訊 -->
+        <section class="info-section">
+          <div class="patient-info-compact">
+            <span class="info-item"><strong>姓名：</strong>{{ patientData?.name || 'N/A' }}</span>
+            <span class="info-item"
+              ><strong>病歷號：</strong>{{ patientData?.medicalRecordNumber || 'N/A' }}</span
+            >
+            <span class="info-item"
+              ><strong>床號：</strong>{{ patientData?.wardNumber || 'N/A' }}</span
+            >
+            <span class="info-item"
+              ><strong>年齡：</strong>{{ calculateAge(patientData?.dateOfBirth) }} 歲</span
+            >
+          </div>
+        </section>
+
+        <!-- 醫師資訊與備註 -->
+        <section class="physician-section">
+          <div class="physician-grid">
+            <div class="form-group">
+              <label for="physician" class="required">開立/修正醫師：</label>
+              <input
+                id="physician"
+                type="text"
+                [(ngModel)]="formData.physician"
+                class="form-control"
+                disabled
+              />
+            </div>
+            <div class="form-group">
+              <label for="notes">備註：</label>
+              <textarea
+                id="notes"
+                [(ngModel)]="formData.notes"
+                class="form-control"
+                rows="1"
+                placeholder="其他注意事項..."
+              ></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- CRRT 參數設定 -->
+        <section class="parameters-section">
+          <h3>CRRT 參數設定</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="mode" class="required">模式：</label
+              ><select id="mode" [(ngModel)]="formData.mode" class="form-control">
+                <option value="">請選擇</option>
+                <option value="CVVH">CVVH</option>
+                <option value="CVVHDF">CVVHDF</option>
+                <option value="CVVHD">CVVHD</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="weight" class="required">體重 (kg)：</label
+              ><input
+                id="weight"
+                type="number"
+                [(ngModel)]="formData.weight"
+                class="form-control"
+                min="0"
+                step="0.1"
+                placeholder="輸入體重"
+              />
+            </div>
+            <!-- ✨✨✨ 1. 新增血液流速 (Blood Flow) 輸入欄位 ✨✨✨ -->
+            <div class="form-group">
+              <label for="bloodFlow">血液流速 (ml/min)：</label>
+              <input
+                id="bloodFlow"
+                type="number"
+                [(ngModel)]="formData.bloodFlow"
+                class="form-control"
+                min="0"
+                step="10"
+                placeholder="Blood Flow"
+              />
+            </div>
+            <div class="form-group">
+              <label for="pbp">PBP (ml/hr)：</label
+              ><input
+                id="pbp"
+                type="number"
+                [(ngModel)]="formData.pbp"
+                class="form-control"
+                min="0"
+                step="10"
+                placeholder="Pre-blood pump 流速"
+              />
+            </div>
+            <div class="form-group">
+              <label for="dialysateFlow">透析液流速 (ml/hr)：</label
+              ><input
+                id="dialysateFlow"
+                type="number"
+                [(ngModel)]="formData.dialysateFlowRate"
+                class="form-control"
+                min="0"
+                step="50"
+                placeholder="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="replacementFlow">補充液流速 (ml/hr)：</label
+              ><input
+                id="replacementFlow"
+                type="number"
+                [(ngModel)]="formData.replacementFlowRate"
+                class="form-control"
+                min="0"
+                step="50"
+                placeholder="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="dilutionRatio">前/後稀釋比例：</label
+              ><input
+                id="dilutionRatio"
+                type="text"
+                [(ngModel)]="formData.dilutionRatio"
+                class="form-control"
+                placeholder="例：50/50 或 前稀釋"
+              />
+            </div>
+            <div class="form-group">
+              <label for="heparin">Heparin：</label
+              ><input
+                id="heparin"
+                type="text"
+                [(ngModel)]="formData.heparin"
+                class="form-control"
+                placeholder="抗凝劑設定"
+              />
+            </div>
+
+            <div class="form-group dehydration-group">
+              <label for="dehydrationRateLower">脫水速率 (ml/hr)：</label>
+              <div class="dehydration-range-inputs">
+                <input
+                  id="dehydrationRateLower"
+                  type="number"
+                  [(ngModel)]="formData.dehydrationRateLower"
+                  class="form-control"
+                  min="0"
+                  step="10"
+                  placeholder="下限"
+                />
+                <span>-</span>
+                <input
+                  id="dehydrationRateUpper"
+                  type="number"
+                  [(ngModel)]="formData.dehydrationRateUpper"
+                  class="form-control"
+                  min="0"
+                  step="10"
+                  placeholder="上限"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>是否加 KCL：</label>
+              <div class="radio-group">
+                <label class="radio-label"
+                  ><input type="radio" [(ngModel)]="formData.addKCL" [value]="true" />是</label
+                ><label class="radio-label"
+                  ><input type="radio" [(ngModel)]="formData.addKCL" [value]="false" />否</label
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 計算輔助區 -->
+        <section class="calculation-section">
+          <h3>計算輔助</h3>
+          <div class="calculation-grid">
+            <div class="calc-item">
+              <label>總液體移除率：</label
+              ><span class="calc-value">{{ totalFluidRemoval }} ml/hr</span>
+            </div>
+            <div class="calc-item">
+              <label>劑量 (ml/kg/hr)：</label><span class="calc-value">{{ dosePerKg }}</span>
+            </div>
+            <div class="calc-item">
+              <label>建議劑量範圍：</label><span class="calc-info">20-35 ml/kg/hr</span>
+            </div>
+          </div>
+          <div class="formula-display">
+            <strong>計算公式：</strong>
+            <div class="formula">
+              總液體移除率 = PBP流速 + 透析液流速 + 補充液流速 + 脫水速率(上限)
+            </div>
+            <div class="formula">劑量 = 總液體移除率 ÷ 體重</div>
+          </div>
+        </section>
+
+        <!-- 歷史紀錄 -->
+        @if (orderHistory && orderHistory.length > 0) {
+  <section class="history-section">
+          <h3>修改紀錄</h3>
+          <div class="history-list">
+            @for (record of orderHistory; track index; let index = $index) {
+  <div class="history-item">
+              <span class="history-time">{{ formatDateTime(record.timestamp) }}</span>
+              <span class="history-physician">{{ record.physician }}</span>
+              <span class="history-action">{{ record.action }}</span>
+            </div>
+            }
+          </div>
+        </section>
+        }
+      </div>
+
+      <footer class="modal-footer">
+        <button (click)="handleSave()" class="btn btn-primary" [disabled]="!isFormValid">
+          儲存醫囑
+        </button>
+        <button (click)="closeModal()" class="btn btn-secondary">取消</button>
+      </footer>
+    </div>
+  </div>
+}

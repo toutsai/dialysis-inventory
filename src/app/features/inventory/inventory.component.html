@@ -9,6 +9,7 @@
   <div class="tabs-navigation">
     <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">庫存總覽</button>
     <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">品項設定</button>
+    <button [class.active]="activeTab() === 'beds'" (click)="activeTab.set('beds')">床位預設用物</button>
     <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">進貨紀錄</button>
     <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">消耗紀錄</button>
     <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">每月盤點</button>
@@ -58,7 +59,7 @@
                     <div class="dash-card-stock">{{ item.estimatedStock }}</div>
                     <div class="dash-card-safe-level">安全庫存：{{ item.safeLevel > 0 ? item.safeLevel : '-' }}</div>
                     @if (item.dailyUsage > 0) {
-                      <div class="dash-card-detail">日均：{{ item.dailyUsage }} ｜ 昨日消耗：{{ item.todayConsumption }} ｜ 餘：{{ item.remainingAfterToday }}</div>
+                      <div class="dash-card-detail">日均：{{ item.dailyUsage }} ｜ 今消耗：{{ item.todayConsumption }} ｜ 餘：{{ item.remainingAfterToday }}</div>
                     }
                   </div>
                 }
@@ -67,26 +68,46 @@
           }
         }
 
-        <!-- Yesterday Consumption -->
+        <!-- Daily Forecast -->
         <div class="panel-header" style="border-top: 1px solid #e9ecef; padding-top: 1rem;">
-          <h3>昨日實際消耗</h3>
+          <h3>每日預估消耗</h3>
         </div>
-        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-          <div class="forecast-card">
-            <h4>昨日實際消耗</h4>
-            @for (category of categoryKeys; track category) {
-              @for (entry of (yesterdayConsumption()[category] || {} | keyvalue); track entry.key) {
-                <div class="forecast-row">
-                  <span class="forecast-label">{{ entry.key }}</span>
-                  <span class="forecast-value">{{ entry.value }}</span>
-                </div>
+        @if (forecastLoading()) {
+          <div class="loading-state">計算中...</div>
+        } @else {
+          <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+            <!-- Today -->
+            <div class="forecast-card">
+              <h4>今日預估消耗</h4>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (todayForecast()[category] || {} | keyvalue); track entry.key) {
+                  <div class="forecast-row">
+                    <span class="forecast-label">{{ entry.key }}</span>
+                    <span class="forecast-value">{{ entry.value }}</span>
+                  </div>
+                }
               }
-            }
-            @if (isConsumptionEmpty(yesterdayConsumption())) {
-              <p style="color: #6c757d; font-size: 0.9rem;">昨日無消耗資料</p>
-            }
+              @if (isForecastEmpty(todayForecast())) {
+                <p style="color: #6c757d; font-size: 0.9rem;">今日無排程</p>
+              }
+            </div>
+            <!-- Tomorrow -->
+            <div class="forecast-card">
+              <h4>明日預估消耗</h4>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (tomorrowForecast()[category] || {} | keyvalue); track entry.key) {
+                  <div class="forecast-row">
+                    <span class="forecast-label">{{ entry.key }}</span>
+                    <span class="forecast-value">{{ entry.value }}</span>
+                  </div>
+                }
+              }
+              @if (isForecastEmpty(tomorrowForecast())) {
+                <p style="color: #6c757d; font-size: 0.9rem;">明日無排程</p>
+              }
+            </div>
           </div>
-        </div>
+        }
       }
     </div>
     }
@@ -154,6 +175,65 @@
                   <td>
                     <button class="btn-sm btn-edit" (click)="openItemModal(item)">編輯</button>
                     <button class="btn-sm btn-delete" (click)="deleteInventoryItem(item.id)">刪除</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- ========== Tab 0.5: 床位設定 ========== -->
+    @if (activeTab() === 'beds') {
+    <div class="tab-panel">
+
+      <div class="panel-header">
+        <h3>床位預設用物</h3>
+        <button class="btn-primary" (click)="openMachineConfigModal()">⚙ 設定機型對照</button>
+      </div>
+      <p class="panel-description">選擇床位的洗腎機型後，B液會自動帶入。如需個別調整，可手動修改 B液欄位。</p>
+
+      <div class="table-container">
+        @if (bedsLoading()) {
+          <div class="loading-state">載入中...</div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>床位</th>
+                <th>洗腎機型號</th>
+                <th>預設 B液 / B粉</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (bed of bedsSettings(); track bed.id) {
+                <tr>
+                  <td>{{ bed.label }}</td>
+                  <td>
+                    <select [(ngModel)]="bed.machineType" (ngModelChange)="onBedMachineChange(bed)" class="adjustment-input" style="width: 200px">
+                      <option value="">(未設定)</option>
+                      @for (mt of machineTypeNames; track mt) {
+                        <option [value]="mt">{{ mt }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    <select [(ngModel)]="bed.defaultBicarbonate" class="adjustment-input" style="width: 250px">
+                      <option value="">(無)</option>
+                      @for (item of (knownItems['bicarbonateType'] || []); track item) {
+                        <option [value]="item">{{ item }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    @if (bed.machineType !== bed._savedMachineType || bed.defaultBicarbonate !== bed._savedBicarbonate) {
+                      <button class="btn-sm btn-edit" (click)="saveBedSetting(bed)">修改設定</button>
+                    } @else {
+                      <button class="btn-sm btn-success" (click)="saveBedSetting(bed)">儲存設定</button>
+                    }
                   </td>
                 </tr>
               }
@@ -262,55 +342,106 @@
     <!-- ========== Tab 2: 消耗紀錄 ========== -->
     @if (activeTab() === 'consumption') {
     <div class="tab-panel">
+      <div class="sub-tabs">
+        <button [class.active]="consumptionSubTab() === 'query'" (click)="consumptionSubTab.set('query')">耗材查詢</button>
+        <button [class.active]="consumptionSubTab() === 'theoretical'" (click)="consumptionSubTab.set('theoretical')">排程推算</button>
+        <button [class.active]="consumptionSubTab() === 'summary'" (click)="consumptionSubTab.set('summary')">當月總量</button>
+        <button [class.active]="consumptionSubTab() === 'upload'" (click)="consumptionSubTab.set('upload')">資料上傳</button>
+      </div>
 
-      <!-- 資料上傳 -->
-      <div class="sub-panel upload-panel">
-        <div class="upload-core-panel">
-          <h4>上傳每日耗材消耗 Excel</h4>
-          <div
-            class="upload-drop-zone"
-            [class.is-dragover]="isDragOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onDrop($event)"
-          >
-            <div class="upload-icon">&#x1F4E4;</div>
-            @if (!selectedFile()) {
-              <h3>拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
-            } @else {
-              <h3>已選擇檔案：<strong>{{ selectedFile()!.name }}</strong></h3>
-            }
-            <p class="upload-hint">
-              支援 .xlsx, .xls 格式。請確保標題行包含 '人工腎臟', '透析藥水CA', 或 'B液種類'。
-            </p>
-            <input
-              id="file-input"
-              type="file"
-              (change)="onFileSelect($event)"
-              accept=".xlsx, .xls"
-              [disabled]="isUploading()"
-            />
-            <label for="file-input" class="file-input-label">
-              {{ selectedFile() ? '重新選擇檔案' : '選擇檔案' }}
-            </label>
+      <!-- 耗材查詢 -->
+      @if (consumptionSubTab() === 'query') {
+      <div class="sub-panel">
+        <div class="search-controls">
+          <div class="group-filters">
+            <div class="search-field">
+              <label>頻率</label>
+              <select [(ngModel)]="groupSearchParams.freq">
+                <option value="一三五">一三五</option>
+                <option value="二四六">二四六</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label>班別</label>
+              <select [(ngModel)]="groupSearchParams.shift">
+                <option value="early">早班</option>
+                <option value="noon">午班</option>
+                <option value="late">晚班</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label>盤點月份</label>
+              <input type="month" [(ngModel)]="groupSearchParams.month" />
+            </div>
           </div>
-          <button class="btn-primary upload-btn-main" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
-            {{ isUploading() ? '處理中...' : '開始上傳' }}
+          <button (click)="handleConsumptionSearch()" [disabled]="consumptionLoading()" class="btn-primary">
+            {{ consumptionLoading() ? '查詢中...' : '查詢耗材' }}
           </button>
-          @if (uploadResult()) {
-            <div
-              class="upload-result-toast"
-              [class.has-error]="uploadResult()!.errorCount > 0"
-              [class.is-success]="uploadResult()!.errorCount === 0"
-            >
-              {{ uploadResult()!.message }}
+          <button
+            (click)="exportConsumablesToExcel()"
+            [disabled]="consumptionLoading() || processedConsumptionData().length === 0"
+            class="btn-success"
+          >匯出 Excel</button>
+        </div>
+
+        <div class="report-display">
+          @if (consumptionLoading()) {
+            <div class="loading-state">正在查詢耗材資料...</div>
+          } @else if (!consumptionSearchPerformed()) {
+            <div class="placeholder-text">請選擇條件並點擊查詢。</div>
+          } @else if (processedConsumptionData().length === 0) {
+            <div class="empty-state">查無符合條件的病人或耗材資料。</div>
+          } @else {
+            <div class="table-container consumption-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="sticky-col col-freq">頻率</th>
+                    <th rowspan="2" class="sticky-col col-shift">班別</th>
+                    <th rowspan="2" class="sticky-col col-bed">床號</th>
+                    <th rowspan="2" class="sticky-col col-mrn">病歷號</th>
+                    <th rowspan="2" class="sticky-col col-name">姓名</th>
+                    @if (dynamicHeaders().artificialKidney.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().artificialKidney.length">人工腎臟</th>
+                    }
+                    @if (dynamicHeaders().dialysateCa.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().dialysateCa.length">透析藥水CA</th>
+                    }
+                    @if (dynamicHeaders().bicarbonateType.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().bicarbonateType.length">B液種類</th>
+                    }
+                  </tr>
+                  <tr>
+                    @for (header of flattenedHeaders; track header) {
+                      <th>{{ header }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of processedConsumptionData(); track row.patientId) {
+                    <tr>
+                      <td class="sticky-col col-freq">{{ row.freq || '-' }}</td>
+                      <td class="sticky-col col-shift">{{ formatShift(row.shiftIndex) }}</td>
+                      <td class="sticky-col col-bed">{{ row.bedNum || '-' }}</td>
+                      <td class="sticky-col col-mrn">{{ row.medicalRecordNumber || '-' }}</td>
+                      <td class="sticky-col col-name">{{ row.patientName }}</td>
+                      @for (header of flattenedHeaders; track header) {
+                        <td>{{ row.consumableCounts[header] || '' }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
           }
         </div>
       </div>
+      }
 
-      <!-- 當月消耗總量 -->
-      <div class="sub-panel" style="margin-top: 2rem;">
+      <!-- 當月總量 -->
+      @if (consumptionSubTab() === 'summary') {
+      <div class="sub-panel">
         <div class="search-controls">
           <div class="search-field">
             <label>選擇月份</label>
@@ -375,6 +506,110 @@
           }
         </div>
       </div>
+      }
+
+      <!-- 資料上傳 -->
+      @if (consumptionSubTab() === 'upload') {
+      <div class="sub-panel upload-panel">
+        <div class="upload-core-panel">
+          <h4>批次上傳每月耗材 Excel</h4>
+          <div
+            class="upload-drop-zone"
+            [class.is-dragover]="isDragOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+          >
+            <div class="upload-icon">&#x1F4E4;</div>
+            @if (!selectedFile()) {
+              <h3>拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
+            } @else {
+              <h3>已選擇檔案：<strong>{{ selectedFile()!.name }}</strong></h3>
+            }
+            <p class="upload-hint">
+              支援 .xlsx, .xls 格式。請確保標題行包含 '人工腎臟', '透析藥水CA', 或 'B液種類'。
+            </p>
+            <input
+              id="file-input"
+              type="file"
+              (change)="onFileSelect($event)"
+              accept=".xlsx, .xls"
+              [disabled]="isUploading()"
+            />
+            <label for="file-input" class="file-input-label">
+              {{ selectedFile() ? '重新選擇檔案' : '選擇檔案' }}
+            </label>
+          </div>
+          <button class="btn-primary upload-btn-main" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
+            {{ isUploading() ? '處理中...' : '開始上傳' }}
+          </button>
+          @if (uploadResult()) {
+            <div
+              class="upload-result-toast"
+              [class.has-error]="uploadResult()!.errorCount > 0"
+              [class.is-success]="uploadResult()!.errorCount === 0"
+            >
+              {{ uploadResult()!.message }}
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- 排程推算 (Theoretical Consumption) -->
+      @if (consumptionSubTab() === 'theoretical') {
+      <div class="sub-panel">
+        <div class="search-controls">
+          <div class="search-field">
+            <label>起始日期</label>
+            <input type="date" [(ngModel)]="theoreticalFilter.startDate" />
+          </div>
+          <div class="search-field">
+            <label>結束日期</label>
+            <input type="date" [(ngModel)]="theoreticalFilter.endDate" />
+          </div>
+          <button class="btn-primary" (click)="runTheoreticalConsumption()" [disabled]="theoreticalLoading()">
+            {{ theoreticalLoading() ? '推算中...' : '開始推算' }}
+          </button>
+        </div>
+
+        @if (theoreticalResult()) {
+        <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+          查詢期間：{{ theoreticalResult()!.period.start }} ～ {{ theoreticalResult()!.period.end }}，
+          共處理 {{ theoreticalResult()!.totalSlots }} 筆排程。
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>類別</th>
+                <th>品項</th>
+                <th>理論消耗數量</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (theoreticalResult()!.grouped[category] | keyvalue); track entry.key) {
+                  <tr>
+                    <td>{{ CATEGORY_NAMES[category] }}</td>
+                    <td>{{ entry.key }}</td>
+                    <td><strong>{{ entry.value }}</strong></td>
+                  </tr>
+                }
+              }
+              @if (theoreticalResult()!.items.length === 0) {
+                <tr>
+                  <td colspan="3" style="color: #6c757d;">查無消耗紀錄（可能該期間沒有排程或病人醫囑為空）</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else if (!theoreticalLoading()) {
+          <div class="empty-state">選擇日期範圍後，點擊「開始推算」來計算理論消耗量。</div>
+        }
+      </div>
+      }
     </div>
     }
 
@@ -777,6 +1012,81 @@
         <button class="btn-primary" (click)="saveInventoryItem()" [disabled]="!isItemFormValid">
           {{ editingItem() ? '更新' : '新增' }}
         </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 洗腎機設定 Modal (Combined: list + form) -->
+  @if (showMachineConfigModal()) {
+  <div class="modal-overlay" (click)="onModalOverlayClick($event, 'machineConfig')">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>洗腎機型 → B粉/B液 對照設定</h3>
+        <button class="modal-close" (click)="closeMachineConfigModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Existing configs list -->
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary, #666);">已設定的機型對照</h4>
+          @if (machineConfigs().length === 0) {
+            <div class="empty-state" style="padding: 0.5rem; font-size: 0.9rem;">尚無設定</div>
+          } @else {
+            <table>
+              <thead>
+                <tr>
+                  <th>洗腎機型號</th>
+                  <th>預設 B粉/B液</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (config of machineConfigs(); track config.id) {
+                  <tr>
+                    <td>{{ config.machineType }}</td>
+                    <td>{{ config.defaultBicarbonate }}</td>
+                    <td>
+                      <button class="btn-sm btn-edit" (click)="editMachineConfigInline(config)">編輯</button>
+                      <button class="btn-sm btn-delete" (click)="deleteMachineConfig(config)">刪除</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color, #ddd); margin: 1rem 0;" />
+
+        <!-- Add/edit form -->
+        <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary, #666);">
+          {{ editingMachineConfig() ? '編輯機型' : '新增機型' }}
+        </h4>
+        <div class="form-field">
+          <label>洗腎機型號 *</label>
+          <input type="text" [(ngModel)]="machineConfigForm.machineType" placeholder="例如：FMC 5008S" required />
+        </div>
+        <div class="form-field">
+          <label>預設 B粉/B液 *</label>
+          <select [(ngModel)]="machineConfigForm.defaultBicarbonate" required>
+            <option value="">請選擇</option>
+            @for (item of (knownItems['bicarbonateType'] || []); track item) {
+              <option [value]="item">{{ item }}</option>
+            }
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+          @if (editingMachineConfig()) {
+            <button class="btn-secondary" (click)="cancelMachineConfigEdit()">取消編輯</button>
+          }
+          <button class="btn-primary" (click)="saveMachineConfig()" [disabled]="!isMachineConfigFormValid">
+            {{ editingMachineConfig() ? '更新' : '新增' }}
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeMachineConfigModal()">關閉</button>
       </div>
     </div>
   </div>
