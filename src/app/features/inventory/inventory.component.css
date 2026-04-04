@@ -523,6 +523,124 @@ input[type='file'] {
   display: none;
 }
 
+/* === 每日消耗明細表格 === */
+.daily-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.daily-category-section {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.daily-category-title {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background-color: #f1f3f5;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.daily-table-wrapper {
+  overflow-x: auto;
+}
+
+.daily-grid-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.daily-grid-table th,
+.daily-grid-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+  border: 1px solid #e9ecef;
+  white-space: nowrap;
+}
+
+.daily-grid-table thead th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #6c757d;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.daily-grid-table thead th.has-data {
+  color: #155724;
+  background-color: #d4edda;
+}
+
+.sticky-item-col {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background-color: #f8f9fa;
+  min-width: 120px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.daily-grid-table tbody .sticky-item-col {
+  background-color: #fff;
+}
+
+.daily-grid-table tbody tr:nth-child(even) .sticky-item-col {
+  background-color: #f8f9fa;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.day-cell {
+  min-width: 36px;
+  color: #495057;
+}
+
+.day-cell.has-value {
+  background-color: #f0f7ff;
+  font-weight: 500;
+  color: #0d47a1;
+}
+
+.total-col {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background-color: #fff3cd;
+  font-weight: 700;
+  min-width: 55px;
+}
+
+.total-value {
+  color: #856404;
+  font-weight: 700;
+}
+
+.daily-grid-table thead .total-col {
+  background-color: #ffeeba;
+  color: #856404;
+}
+
+.uploaded-days-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+  padding: 0.4rem 0.75rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
 
 /* === 每月盤點 === */
 .monthly-summary {

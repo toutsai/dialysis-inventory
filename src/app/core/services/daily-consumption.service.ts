@@ -328,4 +328,31 @@ export class DailyConsumptionService {
       return [];
     }
   }
+
+  /**
+   * Get per-day consumption breakdown for a month.
+   * Returns a map: date → DailyConsumptionTotals
+   */
+  async getMonthlyDailyBreakdown(month: string): Promise<Map<string, DailyConsumptionTotals>> {
+    const db = this.firebaseService.db;
+    const result = new Map<string, DailyConsumptionTotals>();
+
+    try {
+      const q = query(
+        collection(db, 'daily_consumption'),
+        where('month', '==', month),
+        orderBy('date'),
+      );
+      const snapshot = await getDocs(q);
+
+      snapshot.docs.forEach((d) => {
+        const data = d.data() as DailyConsumptionDoc;
+        result.set(data.date, data.totals);
+      });
+    } catch (error) {
+      console.error('[DailyConsumption] 查詢每日明細失敗:', error);
+    }
+
+    return result;
+  }
 }

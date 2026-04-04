@@ -114,6 +114,10 @@ export class InventoryComponent implements OnInit {
     bicarbonateType: {},
   };
 
+  // Daily breakdown for calendar view
+  daysInMonth = signal<number[]>([]);
+  uploadedDays = signal<Set<number>>(new Set());
+
   // ==================== Tab 3: 每月盤點 ====================
   monthlyLoading = signal(false);
   monthlyCalculated = signal(false);
@@ -785,6 +789,9 @@ export class InventoryComponent implements OnInit {
     this.isAlertDialogVisible.set(true);
   }
 
+  // dailyGrid[category:item][day] = count
+  dailyGrid = signal<Record<string, Record<number, number>>>({});
+
   async loadMonthlySummary(): Promise<void> {
     this.summaryLoading.set(true);
     this.summaryLoaded.set(false);
@@ -794,10 +801,38 @@ export class InventoryComponent implements OnInit {
     }
 
     try {
-      const consumption = await this.getMonthlyConsumption(this.summaryMonth);
-      for (const category of Object.keys(this.monthlySummaryData)) {
-        this.monthlySummaryData[category] = consumption[category] || {};
+      // Build days array for the selected month
+      const [year, month] = this.summaryMonth.split('-').map(Number);
+      const totalDays = new Date(year, month, 0).getDate();
+      this.daysInMonth.set(Array.from({ length: totalDays }, (_, i) => i + 1));
+
+      // Load daily breakdown and build grid
+      const dailyMap = await this.dailyConsumption.getMonthlyDailyBreakdown(this.summaryMonth);
+      const grid: Record<string, Record<number, number>> = {};
+      const uploaded = new Set<number>();
+
+      dailyMap.forEach((totals, date) => {
+        const day = parseInt(date.split('-')[2], 10);
+        uploaded.add(day);
+        for (const category of Object.keys(totals)) {
+          for (const [item, count] of Object.entries(totals[category])) {
+            const key = `${category}:${item}`;
+            if (!grid[key]) grid[key] = {};
+            grid[key][day] = (grid[key][day] || 0) + count;
+          }
+        }
+      });
+
+      this.dailyGrid.set(grid);
+      this.uploadedDays.set(uploaded);
+
+      // Build totals from grid
+      for (const [key, days] of Object.entries(grid)) {
+        const [category, item] = key.split(':');
+        if (!this.monthlySummaryData[category]) this.monthlySummaryData[category] = {};
+        this.monthlySummaryData[category][item] = Object.values(days).reduce((sum, v) => sum + v, 0);
       }
+
       this.summaryLoaded.set(true);
     } catch (error: any) {
       console.error('載入當月總量失敗:', error);
@@ -812,31 +847,40 @@ export class InventoryComponent implements OnInit {
     return Object.values(data).reduce((sum, count) => sum + (count || 0), 0);
   }
 
+  getDayValue(category: string, item: string, day: number): number | null {
+    const grid = this.dailyGrid();
+    const key = `${category}:${item}`;
+    return grid[key]?.[day] ?? null;
+  }
+
+  getItemTotal(category: string, item: string): number {
+    const grid = this.dailyGrid();
+    const key = `${category}:${item}`;
+    const days = grid[key];
+    if (!days) return 0;
+    return Object.values(days).reduce((sum, v) => sum + v, 0);
+  }
+
   exportMonthlySummary(): void {
-    const rows: any[][] = [['類別', '品項', '每箱數量', '當月消耗(個)', '當月消耗(箱)']];
+    const days = this.daysInMonth();
+    const headerRow: any[] = ['類別', '品項', ...days.map(d => `${d}日`), '合計'];
+    const rows: any[][] = [headerRow];
 
     for (const category of Object.keys(CATEGORY_NAMES)) {
       const items = this.monthlySummaryData[category] || {};
-      for (const [item, count] of Object.entries(items)) {
-        rows.push([
-          CATEGORY_NAMES[category],
-          item,
-          this.getUnitsPerBox(category, item),
-          count,
-          this.calculateBoxes(category, item, count),
-        ]);
+      for (const item of Object.keys(items)) {
+        const row: any[] = [CATEGORY_NAMES[category], item];
+        for (const day of days) {
+          row.push(this.getDayValue(category, item, day) ?? '');
+        }
+        row.push(this.getItemTotal(category, item));
+        rows.push(row);
       }
-    }
-
-    rows.push([]);
-    rows.push(['類別小計', '', '', '', '']);
-    for (const category of Object.keys(CATEGORY_NAMES)) {
-      rows.push([CATEGORY_NAMES[category], '合計', '', this.getCategoryTotal(category), '']);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '當月消耗總量');
+    XLSX.utils.book_append_sheet(wb, ws, '每日消耗明細');
 
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });

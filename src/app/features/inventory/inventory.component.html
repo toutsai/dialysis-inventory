@@ -304,7 +304,7 @@
         </div>
       </div>
 
-      <!-- 當月消耗總量 -->
+      <!-- 每日消耗明細 -->
       <div class="consumption-content">
         <div class="search-controls">
           <div class="search-field">
@@ -312,60 +312,60 @@
             <input type="month" [(ngModel)]="summaryMonth" />
           </div>
           <button (click)="loadMonthlySummary()" [disabled]="summaryLoading()" class="btn-primary">
-            {{ summaryLoading() ? '載入中...' : '查詢總量' }}
+            {{ summaryLoading() ? '載入中...' : '查詢' }}
           </button>
           <button
             (click)="exportMonthlySummary()"
             [disabled]="summaryLoading() || !summaryLoaded()"
             class="btn-success"
           >匯出 Excel</button>
+          @if (summaryLoaded()) {
+            <span class="uploaded-days-info">
+              已上傳 {{ uploadedDays().size }} / {{ daysInMonth().length }} 天
+            </span>
+          }
         </div>
 
         <div class="report-display">
           @if (summaryLoading()) {
-            <div class="loading-state">正在計算當月消耗總量...</div>
+            <div class="loading-state">正在載入每日消耗資料...</div>
           } @else if (!summaryLoaded()) {
             <div class="placeholder-text">請選擇月份並點擊查詢。</div>
           } @else {
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>類別</th>
-                    <th>品項</th>
-                    <th>每箱數量</th>
-                    <th>當月消耗(個)</th>
-                    <th>當月消耗(箱)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (category of categoryKeys; track category) {
-                    @for (item of getSummaryItemKeys(category); track item) {
-                      <tr>
-                        <td>{{ CATEGORY_NAMES[category] }}</td>
-                        <td>{{ item }}</td>
-                        <td>{{ getUnitsPerBox(category, item) }}</td>
-                        <td>{{ monthlySummaryData[category][item] }}</td>
-                        <td class="box-cell">{{ calculateBoxes(category, item, monthlySummaryData[category][item]) }}</td>
-                      </tr>
-                    }
-                  }
-                </tbody>
-                <tfoot>
-                  <tr class="summary-total-row">
-                    <td colspan="3"><strong>各類別小計</strong></td>
-                    <td colspan="2"></td>
-                  </tr>
-                  @for (category of categoryKeys; track category) {
-                    <tr class="category-total">
-                      <td>{{ CATEGORY_NAMES[category] }}</td>
-                      <td colspan="2">合計</td>
-                      <td><strong>{{ getCategoryTotal(category) }}</strong></td>
-                      <td class="box-cell">-</td>
-                    </tr>
-                  }
-                </tfoot>
-              </table>
+            <div class="daily-grid-container">
+              @for (category of categoryKeys; track category) {
+                @if (getSummaryItemKeys(category).length > 0) {
+                  <div class="daily-category-section">
+                    <h4 class="daily-category-title">{{ CATEGORY_NAMES[category] }}</h4>
+                    <div class="daily-table-wrapper">
+                      <table class="daily-grid-table">
+                        <thead>
+                          <tr>
+                            <th class="sticky-item-col">品項</th>
+                            @for (day of daysInMonth(); track day) {
+                              <th [class.has-data]="uploadedDays().has(day)">{{ day }}</th>
+                            }
+                            <th class="total-col">合計</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of getSummaryItemKeys(category); track item) {
+                            <tr>
+                              <td class="sticky-item-col item-name">{{ item }}</td>
+                              @for (day of daysInMonth(); track day) {
+                                <td class="day-cell" [class.has-value]="getDayValue(category, item, day) !== null">
+                                  {{ getDayValue(category, item, day) ?? '' }}
+                                </td>
+                              }
+                              <td class="total-col total-value">{{ getItemTotal(category, item) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+              }
             </div>
           }
         </div>
