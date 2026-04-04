@@ -275,54 +275,37 @@
     @if (activeTab() === 'consumption') {
     <div class="tab-panel">
 
-      <!-- 資料上傳 -->
-      <div class="sub-panel upload-panel">
-        <div class="upload-core-panel">
-          <h4>上傳每日耗材消耗 Excel</h4>
-          <div
-            class="upload-drop-zone"
-            [class.is-dragover]="isDragOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onDrop($event)"
-          >
-            <div class="upload-icon">&#x1F4E4;</div>
-            @if (!selectedFile()) {
-              <h3>拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
-            } @else {
-              <h3>已選擇檔案：<strong>{{ selectedFile()!.name }}</strong></h3>
-            }
-            <p class="upload-hint">
-              支援 .xlsx, .xls 格式。請確保標題行包含 '人工腎臟', '透析藥水CA', 或 'B液種類'。
-            </p>
-            <input
-              id="file-input"
-              type="file"
-              (change)="onFileSelect($event)"
-              accept=".xlsx, .xls"
-              [disabled]="isUploading()"
-            />
-            <label for="file-input" class="file-input-label">
-              {{ selectedFile() ? '重新選擇檔案' : '選擇檔案' }}
-            </label>
-          </div>
-          <button class="btn-primary upload-btn-main" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
-            {{ isUploading() ? '處理中...' : '開始上傳' }}
+      <!-- 上傳工具列 -->
+      <div class="upload-toolbar">
+        <div class="upload-toolbar-left"
+          [class.is-dragover]="isDragOver()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            id="file-input"
+            type="file"
+            (change)="onFileSelect($event)"
+            accept=".xlsx, .xls"
+            [disabled]="isUploading()"
+          />
+          <label for="file-input" class="file-input-label">
+            {{ selectedFile() ? selectedFile()!.name : '選擇 Excel 檔案' }}
+          </label>
+          <button class="btn-primary btn-sm" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
+            {{ isUploading() ? '處理中...' : '上傳' }}
           </button>
           @if (uploadResult()) {
-            <div
-              class="upload-result-toast"
-              [class.has-error]="uploadResult()!.errorCount > 0"
-              [class.is-success]="uploadResult()!.errorCount === 0"
-            >
+            <span class="upload-status" [class.has-error]="uploadResult()!.errorCount > 0" [class.is-success]="!uploadResult()!.errorCount">
               {{ uploadResult()!.message }}
-            </div>
+            </span>
           }
         </div>
       </div>
 
       <!-- 當月消耗總量 -->
-      <div class="sub-panel" style="margin-top: 2rem;">
+      <div class="consumption-content">
         <div class="search-controls">
           <div class="search-field">
             <label>選擇月份</label>

@@ -461,102 +461,68 @@ tbody tr:nth-child(even) .sticky-col {
   background-color: #f8f9fa;
 }
 
-/* === 上傳區域 === */
-.upload-panel {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 2rem;
-}
-
-.upload-core-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  align-items: center;
-  padding: 2rem;
-  width: 100%;
-  max-width: 600px;
-}
-
-.upload-drop-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem;
-  border: 2px dashed #adb5bd;
-  border-radius: 12px;
-  background-color: #f8f9fa;
-  width: 100%;
-  text-align: center;
-  transition: all 0.2s ease-in-out;
-}
-
-.upload-drop-zone.is-dragover {
-  border-color: #007bff;
-  background-color: #e7f1ff;
-}
-
-.upload-icon {
-  font-size: 3rem;
-  color: #007bff;
+/* === 上傳工具列 === */
+.upload-toolbar {
+  flex-shrink: 0;
+  padding: 0.75rem 0;
   margin-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
 }
 
-.upload-drop-zone h3 {
-  margin: 0 0 0.5rem 0;
+.upload-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.upload-toolbar-left.is-dragover {
+  background-color: #e7f1ff;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.upload-toolbar .file-input-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  background-color: #fff;
+  border: 1px solid #adb5bd;
   color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.upload-hint {
-  color: #6c757d;
-  margin: 0 0 1.5rem 0;
+.upload-toolbar .file-input-label:hover {
+  background-color: #e9ecef;
+}
+
+.upload-status {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+}
+
+.upload-status.is-success {
+  color: #155724;
+  background-color: #d4edda;
+}
+
+.upload-status.has-error {
+  color: #721c24;
+  background-color: #f8d7da;
 }
 
 input[type='file'] {
   display: none;
 }
 
-.file-input-label {
-  display: inline-block;
-  padding: 0.6rem 1.2rem;
-  background-color: #fff;
-  border: 1px solid #6c757d;
-  color: #495057;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.file-input-label:hover {
-  background-color: #e9ecef;
-}
-
-.upload-btn-main {
-  padding: 0.75rem 2rem;
-  font-size: 1.1rem;
-}
-
-.upload-result-toast {
-  width: 100%;
-  padding: 1rem;
-  border-radius: 6px;
-  font-weight: 500;
-  text-align: center;
-}
-
-.upload-result-toast.is-success {
-  color: #155724;
-  background-color: #d4edda;
-  border: 1px solid #c3e6cb;
-}
-
-.upload-result-toast.has-error {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-}
 
 /* === 每月盤點 === */
 .monthly-summary {
