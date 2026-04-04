@@ -2,12 +2,12 @@ export const environment = {
   production: false,
   appEnv: 'emulator' as const,
   firebase: {
-    apiKey: 'AIzaSyAxngOc1Nbze_fgARZT__1sa_gkrMsnn3I',
-    authDomain: 'my-dialysis-app-develop.firebaseapp.com',
-    projectId: 'my-dialysis-app-develop',
-    storageBucket: 'my-dialysis-app-develop.appspot.com',
-    messagingSenderId: '1013541887371',
-    appId: '1:1013541887371:web:787b5d7db5faa8c853638e',
+    apiKey: 'AIzaSyD2YxjeuWhDeaKCygNS_62EFnxs8AHrSV0',
+    authDomain: 'hd-inventorymanagement.firebaseapp.com',
+    projectId: 'hd-inventorymanagement',
+    storageBucket: 'hd-inventorymanagement.firebasestorage.app',
+    messagingSenderId: '521268415154',
+    appId: '1:521268415154:web:a21fcd4b39217d2156d7ab',
   },
   useEmulators: true,
 };

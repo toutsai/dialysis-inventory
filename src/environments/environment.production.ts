@@ -2,12 +2,12 @@ export const environment = {
   production: true,
   appEnv: 'production' as const,
   firebase: {
-    apiKey: 'AIzaSyAqO8PzTVP8ARrcSBJqMGrU0svGgRuzHCU',
-    authDomain: 'dialysis-schedule-cd36c.firebaseapp.com',
-    projectId: 'dialysis-schedule-cd36c',
-    storageBucket: 'dialysis-schedule-cd36c.appspot.com',
-    messagingSenderId: '788045577134',
-    appId: '1:788045577134:web:442ad7e7e59f4e3fdf263f',
+    apiKey: 'AIzaSyD2YxjeuWhDeaKCygNS_62EFnxs8AHrSV0',
+    authDomain: 'hd-inventorymanagement.firebaseapp.com',
+    projectId: 'hd-inventorymanagement',
+    storageBucket: 'hd-inventorymanagement.firebasestorage.app',
+    messagingSenderId: '521268415154',
+    appId: '1:521268415154:web:a21fcd4b39217d2156d7ab',
   },
   useEmulators: false,
 };
