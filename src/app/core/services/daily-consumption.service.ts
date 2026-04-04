@@ -151,7 +151,7 @@ export class DailyConsumptionService {
         const itemName = row[consumableColIdx];
         const count = row[countColIdx];
 
-        if (itemName == null || itemName === '') {
+        if (itemName == null || String(itemName).trim() === '') {
           errorRows++;
           continue;
         }
