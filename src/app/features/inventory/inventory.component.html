@@ -1,20 +1,32 @@
 <div class="page-container">
-  <header class="page-header">
-    <div class="header-main-content">
-      <h1>庫存管理</h1>
-      <p class="page-description">管理耗材進貨、消耗紀錄、每月盤點與每週訂單。</p>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>庫存管理</h2>
     </div>
-  </header>
+    <nav class="sidebar-nav">
+      <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">
+        <span class="nav-icon">&#x1F4CA;</span>庫存總覽
+      </button>
+      <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">
+        <span class="nav-icon">&#x1F4CB;</span>品項設定
+      </button>
+      <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">
+        <span class="nav-icon">&#x1F4E6;</span>進貨紀錄
+      </button>
+      <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">
+        <span class="nav-icon">&#x1F4C4;</span>消耗紀錄
+      </button>
+      <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">
+        <span class="nav-icon">&#x1F4C5;</span>每月盤點
+      </button>
+      <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
+        <span class="nav-icon">&#x1F4DD;</span>每週訂單
+      </button>
+    </nav>
+  </aside>
 
-  <div class="tabs-navigation">
-    <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">庫存總覽</button>
-    <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">品項設定</button>
-    <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">進貨紀錄</button>
-    <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">消耗紀錄</button>
-    <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">每月盤點</button>
-    <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">每週訂單</button>
-  </div>
-
+  <!-- Main Content Area -->
   <main class="page-main-content">
     <!-- ========== Dashboard: 庫存總覽 ========== -->
     @if (activeTab() === 'dashboard') {

@@ -1,79 +1,143 @@
 /* === 基礎佈局 === */
 .page-container {
   display: flex;
-  flex-direction: column;
-  height: calc(100vh - 2rem);
-  padding: 0.5rem;
+  flex-direction: row;
+  height: calc(100vh - 3rem);
   background-color: #f8f9fa;
 }
 
-.page-header {
+/* === 側邊欄 === */
+.sidebar {
+  width: 200px;
   flex-shrink: 0;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #dee2e6;
-}
-
-h1 {
-  font-size: 2rem;
-  margin: 0;
-}
-
-.page-description {
-  font-size: 1rem;
-  color: #6c757d;
-  margin: 0.5rem 0 0 0;
-}
-
-/* === Tabs 導航 === */
-.tabs-navigation {
+  background-color: #1e293b;
   display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  margin-bottom: -1px;
+  flex-direction: column;
+  border-right: 1px solid #334155;
 }
 
-.tabs-navigation button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
+.sidebar-header {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #334155;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  flex-grow: 1;
+}
+
+.sidebar-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  border: 1px solid transparent;
-  border-bottom: none;
+  border: none;
   background-color: transparent;
-  color: #6c757d;
+  color: #94a3b8;
   cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  transition: all 0.2s;
+  text-align: left;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
 }
 
-.tabs-navigation button.active {
-  background-color: #fff;
-  color: #007bff;
-  border-color: #dee2e6;
+.sidebar-nav button:hover {
+  background-color: #334155;
+  color: #e2e8f0;
 }
 
-.tabs-navigation button:hover:not(.active) {
-  background-color: #e9ecef;
+.sidebar-nav button.active {
+  background-color: #0f172a;
+  color: #60a5fa;
+  border-left-color: #3b82f6;
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.1rem;
+  width: 1.4rem;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 /* === 主內容區 === */
 .page-main-content {
   flex-grow: 1;
   background-color: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 0 8px 8px 8px;
   display: flex;
   overflow: auto;
   min-height: 0;
 }
 
+/* === 手機版：側邊欄改為頂部橫列 === */
+@media (max-width: 768px) {
+  .page-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #334155;
+  }
+
+  .sidebar-header {
+    padding: 0.75rem 1rem;
+    border-bottom: none;
+    border-right: 1px solid #334155;
+    white-space: nowrap;
+  }
+
+  .sidebar-header h2 {
+    font-size: 1rem;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    padding: 0;
+    flex-grow: 0;
+  }
+
+  .sidebar-nav button {
+    padding: 0.75rem 1rem;
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    font-size: 0.85rem;
+  }
+
+  .sidebar-nav button.active {
+    border-left-color: transparent;
+    border-bottom-color: #3b82f6;
+  }
+
+  .nav-icon {
+    display: none;
+  }
+}
+
 .tab-panel {
   width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  overflow: auto;
+  padding: 1.5rem 2rem;
 }
 
 /* === 面板標頭 === */
