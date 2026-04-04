@@ -1,0 +1,145 @@
+/* Style 區塊保持不變 */
+.schedule-table-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.schedule-table th,
+.schedule-table td {
+  border: 1px solid #dee2e6;
+  text-align: center;
+  vertical-align: middle;
+  padding: 0;
+  height: 60px;
+}
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+  padding: 8px 4px;
+}
+.date-display {
+  font-size: 0.8em;
+  color: #6c757d;
+  display: block;
+}
+.bed-header-cell {
+  width: 80px;
+}
+.shift-header-cell {
+  width: 70px;
+}
+.bed-number-cell {
+  position: sticky;
+  left: 0;
+  background-color: #f8f9fa;
+  z-index: 5;
+  font-weight: bold;
+}
+.hepatitis-bed {
+  background-color: var(--hepatitis-bg, #fff9c4);
+}
+.shift-name-cell {
+  background-color: #f8f9fa;
+  font-size: 0.9em;
+}
+.schedule-slot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+}
+.patient-details {
+  padding: 4px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.patient-name {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-weight: bold;
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+.patient-mrn {
+  font-size: 0.8em;
+  color: #555;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.disease-tag-in-table {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 2px 6px;
+  line-height: 1;
+  background-color: transparent;
+  border: 2px solid #dc3545;
+  color: #dc3545;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+.empty-slot-placeholder {
+  color: #adb5bd;
+  font-size: 1.5rem;
+  user-select: none;
+}
+.schedule-slot:hover .empty-slot-placeholder {
+  color: #007bff;
+}
+.special-dialysis-label {
+  font-weight: bold;
+  color: #c53929;
+  font-size: 1em;
+}
+.schedule-slot.is-past {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.schedule-slot.is-past:not([class*='status-']):not([class*='tag-']) {
+  background-color: #f5f5f5 !important;
+  opacity: 1;
+}
+.patient-name-past {
+  font-weight: normal;
+  color: #333;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.schedule-slot.drag-over {
+  background-color: #c8e6c9 !important;
+  border: 2px dashed #4caf50;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.schedule-slot[draggable='true'] {
+  cursor: grab;
+}
+.schedule-slot[draggable='true']:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}

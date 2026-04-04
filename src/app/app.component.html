@@ -1,1 +1,8 @@
-<router-outlet />
+@if (authService.isAuthReady()) {
+  <router-outlet />
+} @else {
+  <div class="loading-screen">
+    <div class="loading-spinner"></div>
+    <p>系統載入中...</p>
+  </div>
+}

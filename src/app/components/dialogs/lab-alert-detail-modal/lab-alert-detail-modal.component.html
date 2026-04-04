@@ -1,0 +1,84 @@
+@if (isVisible) {
+  <div class="modal-overlay" (click)="handleClose()">
+    <div class="modal-container large" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="header-title">
+          <h2>{{ patient?.name }} - 警示報告分析</h2>
+          <span class="abnormality-tag">{{ labItemDisplayNames[abnormalityKey] || abnormalityKey }}</span>
+        </div>
+        <button (click)="handleClose()" class="close-btn">×</button>
+      </div>
+      <div class="tabs-navigation">
+        <button [class.active]="activeTab === 'analysis'" (click)="activeTab = 'analysis'">病因分析</button>
+        <button [class.active]="activeTab === 'suggestion'" (click)="activeTab = 'suggestion'">建議處置</button>
+        <button [class.active]="activeTab === 'labs'" (click)="activeTab = 'labs'">檢驗</button>
+        <button [class.active]="activeTab === 'correlation'" (click)="activeTab = 'correlation'">開藥</button>
+      </div>
+      <div class="modal-body">
+        <!-- Analysis tab -->
+        <div [style.display]="activeTab === 'analysis' ? 'flex' : 'none'" class="tab-panel selection-panel">
+          <h3>請勾選可能的病因：</h3>
+          @for (entry of groupedCausesEntries; track entry[0]) {
+            <div class="selection-group">
+              <h4>{{ entry[0] }}</h4>
+              <div class="options-grid">
+                @for (cause of entry[1]; track cause.text) {
+                  <label class="checkbox-label" (click)="toggleCause(cause.text)">
+                    <input type="checkbox" [checked]="isCauseSelected(cause.text)" />
+                    <span class="checkbox-custom"></span>
+                    {{ cause.text }}
+                  </label>
+                }
+              </div>
+            </div>
+          }
+          <div class="other-input-section">
+            <h4>其他原因：</h4>
+            <textarea [(ngModel)]="otherCauseText" rows="3" placeholder="請在此輸入其他病因"></textarea>
+          </div>
+        </div>
+
+        <!-- Suggestion tab -->
+        <div [style.display]="activeTab === 'suggestion' ? 'flex' : 'none'" class="tab-panel selection-panel">
+          <h3>請勾選建議的處置：</h3>
+          @for (entry of groupedSuggestionsEntries; track entry[0]) {
+            <div class="selection-group">
+              <h4>{{ entry[0] }}</h4>
+              <div class="options-grid">
+                @for (suggestion of entry[1]; track suggestion.text) {
+                  <label class="checkbox-label" (click)="toggleSuggestion(suggestion.text)">
+                    <input type="checkbox" [checked]="isSuggestionSelected(suggestion.text)" />
+                    <span class="checkbox-custom"></span>
+                    {{ suggestion.text }}
+                  </label>
+                }
+              </div>
+            </div>
+          }
+          <div class="other-input-section">
+            <h4>其他處置：</h4>
+            <textarea [(ngModel)]="otherSuggestionText" rows="3" placeholder="請在此輸入其他建議處置"></textarea>
+          </div>
+        </div>
+
+        <!-- Labs tab -->
+        <div [style.display]="activeTab === 'labs' ? 'flex' : 'none'" class="tab-panel">
+          @if (patient) {
+            <app-patient-lab-summary-panel [patient]="patient"></app-patient-lab-summary-panel>
+          }
+        </div>
+
+        <!-- Correlation tab -->
+        <div [style.display]="activeTab === 'correlation' ? 'flex' : 'none'" class="tab-panel">
+          @if (patient && activeTab === 'correlation') {
+            <app-lab-med-correlation-view [patient]="patient"></app-lab-med-correlation-view>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button (click)="handleConfirm()" class="confirm-btn">確認並回填</button>
+        <button (click)="handleClose()" class="cancel-btn">取消</button>
+      </div>
+    </div>
+  </div>
+}

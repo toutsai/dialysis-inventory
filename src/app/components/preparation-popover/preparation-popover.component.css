@@ -1,0 +1,46 @@
+.preparation-popover {
+  z-index: 1010;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 320px;
+  max-width: 600px; /* 加寬以容納新欄位 */
+}
+.popover-content {
+  padding: 0.5rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+th,
+td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 10px;
+  text-align: center;
+}
+th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+td:first-child {
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* ✨ 新增：讓姓名看起來可以點擊 */
+.name-cell {
+  cursor: pointer;
+  color: #007bff;
+  text-decoration: underline;
+}
+.name-cell:hover {
+  background-color: #f0f8ff;
+}
+.empty-state {
+  padding: 1.5rem;
+  text-align: center;
+  color: #666;
+}

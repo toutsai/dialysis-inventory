@@ -2,12 +2,12 @@ export const environment = {
   production: false,
   appEnv: 'emulator' as const,
   firebase: {
-    apiKey: 'YOUR_API_KEY',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    appId: 'YOUR_APP_ID',
+    apiKey: 'AIzaSyAxngOc1Nbze_fgARZT__1sa_gkrMsnn3I',
+    authDomain: 'my-dialysis-app-develop.firebaseapp.com',
+    projectId: 'my-dialysis-app-develop',
+    storageBucket: 'my-dialysis-app-develop.appspot.com',
+    messagingSenderId: '1013541887371',
+    appId: '1:1013541887371:web:787b5d7db5faa8c853638e',
   },
   useEmulators: true,
 };

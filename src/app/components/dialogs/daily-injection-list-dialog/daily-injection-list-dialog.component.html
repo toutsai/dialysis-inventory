@@ -1,0 +1,76 @@
+@if (isVisible) {
+  <div class="dialog-overlay">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>
+          本日應打針劑清單
+          @if (titleDate) {
+            <span>- {{ titleDate }} ({{ injections.length }} 筆)</span>
+          }
+        </h3>
+        <div class="header-actions">
+          <button (click)="handlePrint()" class="btn-primary-dialog">
+            <i class="fas fa-print"></i> 匯出/列印
+          </button>
+          <button (click)="closeDialog()" class="close-btn" title="關閉">×</button>
+        </div>
+      </div>
+      <div class="dialog-body" id="injection-list-content">
+        <div class="print-header">
+          <h4>本日應打針劑清單 - {{ titleDate }}</h4>
+        </div>
+
+        @if (isLoading) {
+          <div class="panel-loading">
+            <div class="loading-spinner"></div>
+            <span>正在計算針劑資料...</span>
+          </div>
+        } @else if (injections.length > 0) {
+          <div class="shift-section">
+            <table class="injection-table">
+              <thead>
+                <tr>
+                  <th>班別</th>
+                  <th>床號</th>
+                  <th>姓名</th>
+                  <th>藥品名稱</th>
+                  <th>劑量</th>
+                  <th>備註 (規則)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (injection of injections; track `${injection.patientId}-${injection.orderCode}-${index}`; let index = $index) {
+                  <tr>
+                    <td>{{ formatShift(injection.shift) }}</td>
+                    <td>{{ injection.bedNum }}</td>
+                    <td>{{ injection.patientName }}</td>
+                    <td>{{ injection.orderName }}</td>
+                    <td>{{ injection.dose }} {{ getMedicationUnit(injection) }}</td>
+                    <td>{{ injection.note }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="panel-empty">
+            <p><i class="fas fa-check-circle"></i> 今日無應打針劑項目</p>
+          </div>
+        }
+      </div>
+
+      @if (showFilter) {
+        <footer class="dialog-footer">
+          <label class="filter-checkbox">
+            <input
+              type="checkbox"
+              [checked]="filterActive"
+              (change)="onFilterChange($any($event.target).checked)"
+            />
+            僅顯示特定針劑 (Cacare, Fe-back, Parsabiv)
+          </label>
+        </footer>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,95 @@
+:host {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+}
+
+.daily-staff-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.staff-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  min-width: 175px;
+  height: 52px;
+  box-sizing: border-box;
+}
+.staff-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-right: 8px;
+  color: white;
+}
+.staff-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  line-height: 1.3;
+  flex-grow: 1;
+}
+.staff-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.staff-job-title {
+  font-size: 0.8em;
+  font-weight: 500;
+  opacity: 0.9;
+}
+.staff-contact {
+  font-size: 0.7rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+.staff-item.shift-early {
+  background-color: #28a745;
+  color: white;
+}
+.staff-item.shift-noon {
+  background-color: #ffc107;
+  color: #212529;
+}
+.staff-item.shift-noon .staff-label {
+  color: #212529;
+}
+.staff-item.shift-late {
+  background-color: #17a2b8;
+  color: white;
+}
+
+/* === 【核心修改】將所有會診醫師的樣式統一為實心紅底白字 === */
+.staff-item.shift-consult-morning,
+.staff-item.shift-consult-afternoon,
+.staff-item.shift-consult-night,
+.staff-item.shift-consult-early,
+.staff-item.shift-consult-noon,
+.staff-item.shift-consult-late {
+  background-color: #ef4444; /* 柔和的紅色背景 */
+  color: white; /* 內部所有文字都設為白色 */
+}
+.staff-item.shift-consult-morning .staff-label,
+.staff-item.shift-consult-afternoon .staff-label,
+.staff-item.shift-consult-night .staff-label,
+.staff-item.shift-consult-early .staff-label,
+.staff-item.shift-consult-noon .staff-label,
+.staff-item.shift-consult-late .staff-label {
+  color: white; /* 再次確保標籤文字是白色 */
+}
+/* ======================================================= */
+
+.staff-item.shift-specialist {
+  background-color: #e5e7eb;
+  color: #1f2937;
+}
+.staff-item.shift-specialist .staff-label {
+  color: #1f2937;
+}

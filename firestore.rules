@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- 權限輔助函式 ---
+    // --- 權限輔助函式 (強化版) ---
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -15,23 +15,163 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && getUserRole() == 'admin';
     }
+    
+    function isEditor() {
+      let role = getUserRole();
+      return isAuthenticated() && (role == 'admin' || role == 'editor');
+    }
+
+    function isContributor() {
+      let role = getUserRole();
+      return isAuthenticated() && (role == 'admin' || role == 'editor' || role == 'contributor');
+    }
 
     function isViewer() {
+      // 您的 isViewer() 其實就等於 isAuthenticated()，這裡保持您的定義
       return isAuthenticated();
     }
 
+    // 檢查是否為 admin 或 viewer（用於庫存管理）
     function isAdminOrViewerRole() {
       let role = getUserRole();
       return isAuthenticated() && (role == 'admin' || role == 'viewer');
     }
 
     // --- 集合規則 ---
-
+    
+    // ... 您所有其他的集合規則保持不變 ...
+    
     match /users/{userId} {
       allow list, get: if isViewer();
       allow write: if isAdmin();
     }
+    
+    match /patients/{patientId} {
+      allow read: if isViewer();
+      allow create, update: if isContributor();
+      allow delete: if isEditor();
+    }
+    
+    match /schedules/{scheduleId} {
+      allow read: if isViewer();
+      allow write: if isEditor();
+    }
+    
+    match /expired_schedules/{scheduleId} {
+      allow read: if isViewer();
+      allow write: if false;
+    }
 
+    match /base_schedules/{scheduleId} {
+      allow read: if isViewer();
+      allow write: if isEditor();
+    }
+    
+    match /memos/{memoId} {
+      allow read, write: if isViewer();
+    }
+    
+    match /schedule_exceptions/{exceptionId} {
+      allow read: if isViewer();
+      allow create, delete: if isEditor();
+      allow update: if isEditor(); 
+    }
+    
+    match /exception_tasks/{taskId} {
+      allow read, write: if false;
+    }
+    
+    match /notifications/{notificationId} {
+      allow read: if isViewer();
+      allow create: if isViewer();
+      allow update, delete: if false;
+    }
+
+    match /global_notifications/{notificationId} {
+      allow read: if isViewer();
+      allow create: if isViewer();
+      allow update, delete: if false;
+    }
+
+    match /dialysis_orders_history/{historyId} {
+      allow read: if isViewer();
+      allow create: if isContributor();
+      allow update: if isEditor();
+      allow delete: if isEditor();
+    }
+
+    match /patient_history/{historyId} {
+      allow read: if isViewer();
+      allow create: if isContributor();
+      allow update: if isEditor();
+      allow delete: if isEditor();
+    }
+
+    match /condition_records/{recordId} {
+      allow read: if isViewer();
+      allow write: if isContributor();
+    }
+    
+    match /lab_alert_analyses/{analysisId} {
+      allow read: if isViewer();
+      allow write: if isContributor();
+    }
+
+    match /lab_reports/{reportId} {
+      allow read: if isViewer();
+      allow write: if isViewer(); 
+    }
+
+    match /nurse_assignments/{date} {
+      allow read: if isViewer();
+      allow write: if isEditor();
+    }
+
+    match /handover_logs/{logId} {
+      // 1. 允許所有登入者 (Viewer) 讀取，這樣工作日誌頁面才能載入交班事項
+      allow read: if isViewer();
+      // 2. 維持只有 Admin 與 Editor 可以編輯/寫入
+      allow write: if isEditor();
+    }
+
+
+    match /daily_logs/{logId} {
+      // ✨ 修改點：讀取 (read) 不做正則表達式 ID 檢查，只要是 Viewer 就能看
+      // 這樣比較穩定，不會因為前端傳入的 ID 格式有一點誤差就報錯
+      allow read: if isViewer();
+      
+      // 寫入 (write)：維持嚴格限制，只有 Editor/Admin 且 ID 必須是日期格式才能寫入
+      allow write: if isEditor() && logId.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    match /site_config/{configId} {
+      // 允許所有登入者讀取 (例如跑馬燈元件)
+      allow read: if isViewer();
+      // 只允許 admin 或 editor 寫入 (例如從工作日誌頁面更新)
+      allow write: if isEditor();
+    }
+
+    match /tasks/{taskId} {
+      allow read, create, update: if isViewer();
+      allow delete: if isEditor();
+    }
+    
+    match /physicians/{physicianId} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    match /physician_schedules/{scheduleId} {
+      allow read: if isViewer();
+      allow write: if isContributor();
+    }
+
+    match /consumables_reports/{reportId} {
+      allow read: if isViewer();
+      allow write: if isViewer();
+    }
+
+    // 庫存管理相關 collections
     match /inventory_items/{itemId} {
       allow read: if isViewer();
       allow write: if isAdminOrViewerRole();
@@ -47,14 +187,80 @@ service cloud.firestore {
       allow write: if isAdminOrViewerRole();
     }
 
-    match /daily_consumption/{docId} {
+    match /bed_inventory_settings/{bedId} {
       allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow write: if isViewer();
     }
 
+    match /machine_bicarbonate_config/{configId} {
+      allow read: if isViewer();
+      allow write: if isViewer();
+    }
+
+    match /medication_orders/{orderId} {
+      allow read: if isViewer();
+      allow create: if isContributor();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /daily_injections/{injectionId} {
+      allow read: if isViewer();
+      allow write: if isContributor();
+    }
+
+    match /medication_drafts/{draftId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null 
+                            && resource.data.authorId == request.auth.uid;
+    }
+
+    match /nursing_duties/{dutyId} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    match /nursing_schedules/{scheduleId} {
+      allow read: if isEditor();
+      allow write: if isAdmin();
+    }
+
+    // 護理組別配置
+    match /nursing_group_config/{configId} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+
+    // 自動分組設定
+    match /auto_assign_config/{configId} {
+      allow read: if isViewer();
+      allow write: if isAdmin();
+    }
+    
+    match /scheduled_patient_updates/{updateId} {
+      allow read: if request.auth.token.role == 'admin' || request.auth.token.role == 'editor';
+      allow write: if request.auth.token.role == 'admin' || request.auth.token.role == 'editor';
+    }
+
+    // KiDit Logbook 權限設定
+    match /kidit_logbook/{dateStr} {
+      // 允許所有已登入的使用者讀取 (isAnyUser() 是您之前定義的函式)
+      allow read: if request.auth != null;
+
+      // 只允許護理師或管理員寫入 (更新已登錄狀態等)
+      // 假設您的規則中有定義 isEditor() 或 isAdmin()
+      allow write: if isEditor() || isAdmin();
+    }
+
+    // ✨ 稽核日誌 - B 級合規要求
     match /audit_logs/{logId} {
+      // 只有管理員可以讀取稽核日誌
       allow read: if isAdmin();
+      // 任何已認證用戶可以建立（透過 Cloud Functions）
       allow create: if isAuthenticated();
+      // 禁止修改和刪除，確保日誌不可竄改
       allow update, delete: if false;
     }
   }

@@ -1,0 +1,295 @@
+.search-container {
+  position: relative;
+  display: inline-block;
+}
+.patient-search-input {
+  padding: 8px 16px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  width: 220px;
+  height: 45px;
+  box-sizing: border-box;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+.patient-search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+.search-results li {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.search-results li:last-child {
+  border-bottom: none;
+}
+.search-results li:hover {
+  background-color: #f0f0f0;
+}
+@keyframes highlight-animation {
+  0% {
+    background-color: #fffbe3;
+    outline: 3px solid #f8c000;
+  }
+  100% {
+    background-color: transparent;
+    outline: 3px solid transparent;
+  }
+}
+::ng-deep .highlight-flash {
+  animation: highlight-animation 2s ease-out;
+}
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 10px;
+}
+.page-header {
+  flex-shrink: 0;
+  padding: 0 0 10px 0;
+  box-sizing: border-box;
+}
+.header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.page-title {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0;
+  color: #343a40;
+}
+.toolbar-left .btn,
+.toolbar-right .btn-save,
+.toolbar-left button,
+.toolbar-right button {
+  padding: 8px 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  color: #212529;
+}
+.toolbar-left .btn:hover {
+  border-color: #adb5bd;
+  background-color: #f8f9fa;
+}
+.btn.btn-info {
+  background-color: #17a2b8;
+  color: white;
+  border-color: #17a2b8;
+}
+.btn.btn-info:hover {
+  background-color: #138496;
+  border-color: #117a8b;
+}
+.btn.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+  border-color: #ffc107;
+}
+.btn.btn-warning:hover {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+.btn-save {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+.btn-save:hover:not(:disabled) {
+  background-color: #0069d9;
+  border-color: #0062cc;
+}
+.btn-save:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.status-text {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+.page-main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+}
+.schedule-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.stats-toolbar-wrapper {
+  flex-shrink: 0;
+  padding: 8px 1rem;
+  box-sizing: border-box;
+  transition: padding-left 0.2s ease-in-out;
+}
+.schedule-table-component {
+  flex-grow: 1;
+  overflow: auto;
+}
+::ng-deep .schedule-slot.status-opd {
+  background-color: var(--green-bg, #e8f5e9);
+}
+::ng-deep .schedule-slot.status-ipd {
+  background-color: var(--red-bg, #ffebee);
+}
+::ng-deep .schedule-slot.status-er {
+  background-color: var(--purple-bg, #f3e5f5);
+}
+::ng-deep .schedule-slot.status-biweekly {
+  background-color: var(--orange-bg, #ffcc80);
+}
+::ng-deep .schedule-slot.status-deleted {
+  background-color: #e0e0e0;
+  color: #9e9e9e;
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+::ng-deep .schedule-slot.tag-chou {
+  background-color: #e3f2fd;
+}
+::ng-deep .schedule-slot.tag-new {
+  background-color: #fffde7;
+}
+::ng-deep .schedule-slot.tag-huan {
+  background-color: #e0f7fa;
+}
+::ng-deep .schedule-slot.tag-liang {
+  background-color: #fff3e0;
+}
+::ng-deep .schedule-slot.tag-b {
+  background-color: #fff9c4;
+}
+.is-locked .page-header button:not(:disabled) {
+  opacity: 0.65;
+  pointer-events: none;
+  cursor: default;
+}
+.is-locked .page-main-content {
+  background-color: #fafafa;
+}
+.is-locked ::ng-deep .schedule-slot {
+  cursor: not-allowed;
+}
+.is-locked ::ng-deep .memo-icon-wrapper {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.is-locked ::ng-deep .schedule-slot[draggable='true'] {
+  cursor: not-allowed;
+}
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.5rem;
+  color: #6c757d;
+}
+::ng-deep .shift-row.status-opd,
+::ng-deep .peripheral-shift-row.status-opd,
+::ng-deep .patient-item.status-opd {
+  background-color: #e8f5e9;
+}
+::ng-deep .shift-row.status-ipd,
+::ng-deep .peripheral-shift-row.status-ipd,
+::ng-deep .patient-item.status-ipd {
+  background-color: #ffebee;
+}
+::ng-deep .shift-row.status-er,
+::ng-deep .peripheral-shift-row.status-er,
+::ng-deep .patient-item.status-er {
+  background-color: #f3e5f5;
+}
+::ng-deep .shift-row.status-biweekly,
+::ng-deep .peripheral-shift-row.status-biweekly,
+::ng-deep .patient-item.status-biweekly {
+  background-color: #ffcc80;
+}
+::ng-deep .shift-row.status-deleted,
+::ng-deep .peripheral-shift-row.status-deleted,
+::ng-deep .patient-item.status-deleted {
+  background-color: #e0e0e0;
+  color: #9e9e9e;
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+::ng-deep .shift-row.tag-chou,
+::ng-deep .peripheral-shift-row.tag-chou,
+::ng-deep .patient-item.tag-chou {
+  background-color: #658ee0;
+}
+::ng-deep .shift-row.tag-new,
+::ng-deep .peripheral-shift-row.tag-new,
+::ng-deep .patient-item.tag-new {
+  background-color: #f5ec8e;
+}
+::ng-deep .shift-row.tag-huan,
+::ng-deep .peripheral-shift-row.tag-huan,
+::ng-deep .patient-item.tag-huan {
+  background-color: #e0f7fa;
+}
+::ng-deep .shift-row.tag-liang,
+::ng-deep .peripheral-shift-row.tag-liang,
+::ng-deep .patient-item.tag-liang {
+  background-color: #fff3e0;
+}
+::ng-deep .shift-row.tag-b,
+::ng-deep .peripheral-shift-row.tag-b,
+::ng-deep .patient-item.tag-b {
+  background-color: #fff9c4;
+}
+::ng-deep .schedule-slot.status-biweekly {
+  background-color: #ffcc80;
+}
+::ng-deep .schedule-slot.tag-chou {
+  background-color: #658ee0;
+}
+::ng-deep .schedule-slot.tag-new {
+  background-color: #f5ec8e;
+}

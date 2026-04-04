@@ -1,0 +1,70 @@
+:host-context(body.modal-open) {
+  overflow: hidden;
+}
+
+.selection-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.selection-dialog-content {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.selection-dialog-content h3 {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 1.5em;
+  color: #333;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.button-group button {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 1.1em;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background-color: #f8f9fa;
+  color: #333;
+  transition: all 0.2s ease-in-out;
+}
+
+.button-group button:hover {
+  border-color: #007bff;
+  background-color: #e3f2fd;
+  color: #007bff;
+}
+
+.button-group button.cancel-btn {
+  background-color: transparent;
+  color: #6c757d;
+  border-color: #ced4da;
+  margin-top: 10px;
+}
+.button-group button.cancel-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  color: #495057;
+}

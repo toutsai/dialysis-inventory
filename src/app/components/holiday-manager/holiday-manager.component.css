@@ -1,0 +1,9 @@
+.holiday-container {
+  border: 1px solid #ccc;
+  padding: 16px;
+  margin-top: 20px;
+  border-radius: 8px;
+}
+.holiday-item {
+  margin-bottom: 12px;
+}

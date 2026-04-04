@@ -1,0 +1,38 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>「{{ patientName }}」的動向歷史</h3>
+      <button (click)="onClose()" class="close-button">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (isLoading) {
+        <div class="loading-spinner">讀取中...</div>
+      } @else if (groupedHistory.length === 0) {
+        <div class="no-history">沒有歷史紀錄</div>
+      } @else {
+        <div class="episodes-container">
+          @for (episode of groupedHistory; track $index; let i = $index) {
+            <div class="episode-card">
+              <div class="timeline-wrapper">
+                <div class="episode-title">歷程 #{{ groupedHistory.length - i }}</div>
+                <ul class="timeline">
+                  @for (entry of episode; track entry.id; let entryIndex = $index) {
+                    <li class="timeline-item">
+                      <div class="timeline-content" [ngClass]="'marker-' + entry.eventType.toLowerCase()">
+                        <span class="timestamp">{{ formatTimestamp(entry.timestamp) }}</span>
+                        <p class="event-description" [innerHTML]="formatEvent(entry)"></p>
+                      </div>
+                      @if (entryIndex < episode.length - 1) {
+                        <div class="timeline-arrow">→</div>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
