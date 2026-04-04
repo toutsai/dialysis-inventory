@@ -65,7 +65,7 @@ import { AuthService } from '@services/auth.service';
     }
     .main-content {
       flex: 1;
-      padding: 1rem;
+      overflow: hidden;
     }
   `],
 })
