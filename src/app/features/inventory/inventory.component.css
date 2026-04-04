@@ -74,6 +74,12 @@
   flex-shrink: 0;
 }
 
+.sidebar-divider {
+  height: 1px;
+  background-color: #334155;
+  margin: 0.5rem 1rem;
+}
+
 /* === 主內容區 === */
 .page-main-content {
   flex-grow: 1;
@@ -1158,4 +1164,28 @@ tr.dash-warning {
 .forecast-value {
   font-weight: 600;
   color: #212529;
+}
+
+/* === 角色標籤 === */
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.role-admin {
+  background-color: #fce4ec;
+  color: #c62828;
+}
+
+.role-editor {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.role-viewer {
+  background-color: #f1f8e9;
+  color: #558b2f;
 }

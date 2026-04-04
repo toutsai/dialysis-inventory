@@ -9,6 +9,7 @@ import {
   collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc,
   doc, Timestamp, setDoc, getDoc,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import * as XLSX from 'xlsx';
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -1451,5 +1452,104 @@ export class InventoryComponent implements OnInit {
       if (modal === 'purchase') this.closePurchaseModal();
       else this.closeItemModal();
     }
+  }
+
+  // ==================== 使用者管理 ====================
+  users = signal<any[]>([]);
+  usersLoading = signal(false);
+  showUserModal = signal(false);
+  userForm = {
+    username: '',
+    password: '',
+    name: '',
+    title: '',
+    role: 'viewer' as string,
+    email: '',
+  };
+
+  showResetPasswordModal = signal(false);
+  resetPasswordUserId = signal('');
+  resetPasswordUserName = signal('');
+  resetPasswordNewPassword = '';
+
+  async fetchUsers(): Promise<void> {
+    this.usersLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const snapshot = await getDocs(query(collection(db, 'users'), orderBy('name')));
+      this.users.set(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error('載入使用者失敗:', error);
+    } finally {
+      this.usersLoading.set(false);
+    }
+  }
+
+  openUserModal(): void {
+    this.userForm = { username: '', password: '', name: '', title: '', role: 'viewer', email: '' };
+    this.showUserModal.set(true);
+  }
+
+  closeUserModal(): void {
+    this.showUserModal.set(false);
+  }
+
+  async saveUser(): Promise<void> {
+    if (!this.userForm.username || !this.userForm.password || !this.userForm.name || !this.userForm.title || !this.userForm.role) {
+      this.showAlert('提示', '請填寫所有必要欄位。');
+      return;
+    }
+    try {
+      const createUserFn = httpsCallable(this.firebaseService.functions, 'createUser');
+      await createUserFn({
+        username: this.userForm.username,
+        password: this.userForm.password,
+        name: this.userForm.name,
+        title: this.userForm.title,
+        role: this.userForm.role,
+        email: this.userForm.email,
+      });
+      this.closeUserModal();
+      await this.fetchUsers();
+      this.showAlert('操作成功', '使用者已建立。');
+    } catch (error: any) {
+      console.error('建立使用者失敗:', error);
+      this.showAlert('建立失敗', error.message);
+    }
+  }
+
+  openResetPasswordModal(user: any): void {
+    this.resetPasswordUserId.set(user.id);
+    this.resetPasswordUserName.set(user.name);
+    this.resetPasswordNewPassword = '';
+    this.showResetPasswordModal.set(true);
+  }
+
+  closeResetPasswordModal(): void {
+    this.showResetPasswordModal.set(false);
+  }
+
+  async resetPassword(): Promise<void> {
+    if (!this.resetPasswordNewPassword) {
+      this.showAlert('提示', '請輸入新密碼。');
+      return;
+    }
+    try {
+      const resetFn = httpsCallable(this.firebaseService.functions, 'adminResetPassword');
+      await resetFn({
+        userId: this.resetPasswordUserId(),
+        newPassword: this.resetPasswordNewPassword,
+      });
+      this.closeResetPasswordModal();
+      this.showAlert('操作成功', `已重設 ${this.resetPasswordUserName()} 的密碼。`);
+    } catch (error: any) {
+      console.error('重設密碼失敗:', error);
+      this.showAlert('重設失敗', error.message);
+    }
+  }
+
+  getRoleName(role: string): string {
+    const map: Record<string, string> = { admin: '管理員', editor: '編輯者', contributor: '貢獻者', viewer: '檢視者' };
+    return map[role] || role;
   }
 }

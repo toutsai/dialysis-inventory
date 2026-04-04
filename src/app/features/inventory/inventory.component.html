@@ -23,6 +23,12 @@
       <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
         <span class="nav-icon">&#x1F4DD;</span>每週訂單
       </button>
+      @if (authService.isAdmin()) {
+        <div class="sidebar-divider"></div>
+        <button [class.active]="activeTab() === 'users'" (click)="activeTab.set('users'); fetchUsers()">
+          <span class="nav-icon">&#x1F465;</span>使用者管理
+        </button>
+      }
     </nav>
   </aside>
 
@@ -607,7 +613,126 @@
       }
     </div>
     }
+
+    <!-- ========== 使用者管理 ========== -->
+    @if (activeTab() === 'users') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>使用者管理</h3>
+        <button class="btn-primary" (click)="openUserModal()">+ 新增使用者</button>
+      </div>
+
+      @if (usersLoading()) {
+        <div class="loading-state">載入中...</div>
+      } @else if (users().length === 0) {
+        <div class="empty-state">尚無使用者資料</div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>帳號</th>
+                <th>職稱</th>
+                <th>角色</th>
+                <th>Email</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of users(); track user.id) {
+                <tr>
+                  <td>{{ user.name }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.title }}</td>
+                  <td>
+                    <span class="role-badge" [class.role-admin]="user.role === 'admin'" [class.role-editor]="user.role === 'editor'" [class.role-viewer]="user.role === 'viewer'">
+                      {{ getRoleName(user.role) }}
+                    </span>
+                  </td>
+                  <td>{{ user.email || '-' }}</td>
+                  <td>
+                    <button class="btn-sm btn-edit" (click)="openResetPasswordModal(user)">重設密碼</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+    }
   </main>
+
+  <!-- 新增使用者 Modal -->
+  @if (showUserModal()) {
+  <div class="modal-overlay" (click)="$event.target === $event.currentTarget && closeUserModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>新增使用者</h3>
+        <button class="modal-close" (click)="closeUserModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>帳號 *</label>
+          <input type="text" [(ngModel)]="userForm.username" placeholder="登入用帳號" />
+        </div>
+        <div class="form-field">
+          <label>密碼 *</label>
+          <input type="text" [(ngModel)]="userForm.password" placeholder="至少8字元，含大小寫和數字" />
+        </div>
+        <div class="form-field">
+          <label>姓名 *</label>
+          <input type="text" [(ngModel)]="userForm.name" placeholder="使用者姓名" />
+        </div>
+        <div class="form-field">
+          <label>職稱 *</label>
+          <input type="text" [(ngModel)]="userForm.title" placeholder="例如：護理師" />
+        </div>
+        <div class="form-field">
+          <label>角色 *</label>
+          <select [(ngModel)]="userForm.role">
+            <option value="viewer">檢視者</option>
+            <option value="contributor">貢獻者</option>
+            <option value="editor">編輯者</option>
+            <option value="admin">管理員</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="userForm.email" placeholder="選填" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeUserModal()">取消</button>
+        <button class="btn-primary" (click)="saveUser()">建立</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 重設密碼 Modal -->
+  @if (showResetPasswordModal()) {
+  <div class="modal-overlay" (click)="$event.target === $event.currentTarget && closeResetPasswordModal()">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>重設密碼 — {{ resetPasswordUserName() }}</h3>
+        <button class="modal-close" (click)="closeResetPasswordModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>新密碼</label>
+          <input type="text" [(ngModel)]="resetPasswordNewPassword" placeholder="至少8字元，含大小寫和數字" />
+          <p style="font-size: 0.8rem; color: #6c757d; margin-top: 0.25rem;">密碼規則：至少 8 字元，包含大寫、小寫字母和數字。</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeResetPasswordModal()">取消</button>
+        <button class="btn-primary" (click)="resetPassword()">確認重設</button>
+      </div>
+    </div>
+  </div>
+  }
 
   <!-- 訂單預覽 Modal -->
   @if (showOrderPreview()) {
