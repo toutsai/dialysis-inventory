@@ -1,0 +1,1101 @@
+<div class="page-container">
+  <header class="page-header">
+    <div class="header-main-content">
+      <h1>庫存管理</h1>
+      <p class="page-description">管理耗材進貨、消耗紀錄、每月盤點與每週訂單。</p>
+    </div>
+  </header>
+
+  <div class="tabs-navigation">
+    <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">庫存總覽</button>
+    <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">品項設定</button>
+    <button [class.active]="activeTab() === 'beds'" (click)="activeTab.set('beds')">床位預設用物</button>
+    <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">進貨紀錄</button>
+    <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">消耗紀錄</button>
+    <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">每月盤點</button>
+    <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">每週訂單</button>
+  </div>
+
+  <main class="page-main-content">
+    <!-- ========== Dashboard: 庫存總覽 ========== -->
+    @if (activeTab() === 'dashboard') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <div>
+          <h3>庫存總覽</h3>
+          @if (dashboardLastCountDate()) {
+            <p class="panel-description">依據 {{ dashboardLastCountDate() }} 盤點基礎推算</p>
+          }
+        </div>
+        <button class="btn-primary" (click)="loadDashboard()" [disabled]="dashboardLoading()">
+          {{ dashboardLoading() ? '計算中...' : '重新計算' }}
+        </button>
+      </div>
+
+      @if (dashboardLoading()) {
+        <div class="loading-state">計算推估庫存中...</div>
+      } @else if (!dashboardLoaded()) {
+        <div class="empty-state">
+          <p>點擊「重新計算」載入庫存推估。</p>
+          <p style="color: #6c757d; font-size: 0.9rem;">需要先有盤點紀錄才能計算推估庫存。</p>
+        </div>
+      } @else {
+        <!-- Stock Level Cards -->
+        @if (dashboardItems().length === 0) {
+          <div class="empty-state">無庫存資料（請先進行每月盤點）</div>
+        }
+
+        @for (category of categoryKeys; track category) {
+          @if (getDashboardItemsByCategory(category).length > 0) {
+            <div class="dash-category-section">
+              <h4 class="dash-category-title">{{ CATEGORY_NAMES[category] }}</h4>
+              <div class="dash-cards-grid">
+                @for (item of getDashboardItemsByCategory(category); track item.itemName) {
+                  <div class="dash-card" [class.dash-card-safe]="item.status === 'safe'" [class.dash-card-warning]="item.status === 'warning'" [class.dash-card-danger]="item.status === 'danger'" [class.dash-card-critical]="item.status === 'critical'">
+                    <div class="dash-card-header">
+                      <span class="dash-card-name">{{ item.itemName }}</span>
+                      <span class="status-dot" [class.dot-safe]="item.status === 'safe'" [class.dot-warning]="item.status === 'warning'" [class.dot-danger]="item.status === 'danger'" [class.dot-critical]="item.status === 'critical'"></span>
+                    </div>
+                    <div class="dash-card-stock">{{ item.estimatedStock }}</div>
+                    <div class="dash-card-safe-level">安全庫存：{{ item.safeLevel > 0 ? item.safeLevel : '-' }}</div>
+                    @if (item.dailyUsage > 0) {
+                      <div class="dash-card-detail">日均：{{ item.dailyUsage }} ｜ 今消耗：{{ item.todayConsumption }} ｜ 餘：{{ item.remainingAfterToday }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+
+        <!-- Daily Forecast -->
+        <div class="panel-header" style="border-top: 1px solid #e9ecef; padding-top: 1rem;">
+          <h3>每日預估消耗</h3>
+        </div>
+        @if (forecastLoading()) {
+          <div class="loading-state">計算中...</div>
+        } @else {
+          <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+            <!-- Today -->
+            <div class="forecast-card">
+              <h4>今日預估消耗</h4>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (todayForecast()[category] || {} | keyvalue); track entry.key) {
+                  <div class="forecast-row">
+                    <span class="forecast-label">{{ entry.key }}</span>
+                    <span class="forecast-value">{{ entry.value }}</span>
+                  </div>
+                }
+              }
+              @if (isForecastEmpty(todayForecast())) {
+                <p style="color: #6c757d; font-size: 0.9rem;">今日無排程</p>
+              }
+            </div>
+            <!-- Tomorrow -->
+            <div class="forecast-card">
+              <h4>明日預估消耗</h4>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (tomorrowForecast()[category] || {} | keyvalue); track entry.key) {
+                  <div class="forecast-row">
+                    <span class="forecast-label">{{ entry.key }}</span>
+                    <span class="forecast-value">{{ entry.value }}</span>
+                  </div>
+                }
+              }
+              @if (isForecastEmpty(tomorrowForecast())) {
+                <p style="color: #6c757d; font-size: 0.9rem;">明日無排程</p>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+    }
+
+    <!-- ========== Tab 0: 品項設定 ========== -->
+    @if (activeTab() === 'items') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>庫存品項設定</h3>
+        <button class="btn-primary" (click)="openItemModal()">+ 新增品項</button>
+      </div>
+
+      <div class="category-filter-bar">
+        <button
+          class="category-btn"
+          [class.active]="itemFilter.category === ''"
+          (click)="itemFilter.category = ''; fetchInventoryItems()"
+        >全部</button>
+        <button
+          class="category-btn"
+          [class.active]="itemFilter.category === 'artificialKidney'"
+          (click)="itemFilter.category = 'artificialKidney'; fetchInventoryItems()"
+        >人工腎臟</button>
+        <button
+          class="category-btn"
+          [class.active]="itemFilter.category === 'dialysateCa'"
+          (click)="itemFilter.category = 'dialysateCa'; fetchInventoryItems()"
+        >透析藥水CA</button>
+        <button
+          class="category-btn"
+          [class.active]="itemFilter.category === 'bicarbonateType'"
+          (click)="itemFilter.category = 'bicarbonateType'; fetchInventoryItems()"
+        >B液種類</button>
+      </div>
+
+      <div class="table-container">
+        @if (itemsLoading()) {
+          <div class="loading-state">載入中...</div>
+        } @else if (filteredInventoryItems().length === 0) {
+          <div class="empty-state">尚無品項資料</div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>品項類別</th>
+                <th>品項名稱</th>
+                <th>院內代碼</th>
+                <th>每箱個數</th>
+                <th>安全庫存量</th>
+                <th>廠牌</th>
+                <th>廠商聯絡電話</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of filteredInventoryItems(); track item.id) {
+                <tr>
+                  <td>{{ CATEGORY_NAMES[item.category] }}</td>
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.hospitalCode || '-' }}</td>
+                  <td>{{ item.unitsPerBox || '-' }}</td>
+                  <td>{{ item.safeInventoryLevel || 0 }}</td>
+                  <td>{{ item.brand || '-' }}</td>
+                  <td>{{ item.vendorPhone || '-' }}</td>
+                  <td>
+                    <button class="btn-sm btn-edit" (click)="openItemModal(item)">編輯</button>
+                    <button class="btn-sm btn-delete" (click)="deleteInventoryItem(item.id)">刪除</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- ========== Tab 0.5: 床位設定 ========== -->
+    @if (activeTab() === 'beds') {
+    <div class="tab-panel">
+
+      <div class="panel-header">
+        <h3>床位預設用物</h3>
+        <button class="btn-primary" (click)="openMachineConfigModal()">⚙ 設定機型對照</button>
+      </div>
+      <p class="panel-description">選擇床位的洗腎機型後，B液會自動帶入。如需個別調整，可手動修改 B液欄位。</p>
+
+      <div class="table-container">
+        @if (bedsLoading()) {
+          <div class="loading-state">載入中...</div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>床位</th>
+                <th>洗腎機型號</th>
+                <th>預設 B液 / B粉</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (bed of bedsSettings(); track bed.id) {
+                <tr>
+                  <td>{{ bed.label }}</td>
+                  <td>
+                    <select [(ngModel)]="bed.machineType" (ngModelChange)="onBedMachineChange(bed)" class="adjustment-input" style="width: 200px">
+                      <option value="">(未設定)</option>
+                      @for (mt of machineTypeNames; track mt) {
+                        <option [value]="mt">{{ mt }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    <select [(ngModel)]="bed.defaultBicarbonate" class="adjustment-input" style="width: 250px">
+                      <option value="">(無)</option>
+                      @for (item of (knownItems['bicarbonateType'] || []); track item) {
+                        <option [value]="item">{{ item }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    @if (bed.machineType !== bed._savedMachineType || bed.defaultBicarbonate !== bed._savedBicarbonate) {
+                      <button class="btn-sm btn-edit" (click)="saveBedSetting(bed)">修改設定</button>
+                    } @else {
+                      <button class="btn-sm btn-success" (click)="saveBedSetting(bed)">儲存設定</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- ========== Tab 1: 進貨紀錄 ========== -->
+    @if (activeTab() === 'purchase') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>進貨紀錄管理</h3>
+        <button class="btn-primary" (click)="toggleInlineAdd()">
+          {{ showPurchaseInlineAdd() ? '取消新增' : '+ 新增進貨' }}
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-field">
+          <label>月份</label>
+          <input type="month" [(ngModel)]="purchaseFilter.month" (ngModelChange)="fetchPurchases()" />
+        </div>
+        <div class="filter-field">
+          <label>類別</label>
+          <select [(ngModel)]="purchaseFilter.category" (ngModelChange)="fetchPurchases()">
+            <option value="">全部</option>
+            <option value="artificialKidney">人工腎臟</option>
+            <option value="dialysateCa">透析藥水CA</option>
+            <option value="bicarbonateType">B液種類</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-container">
+        @if (purchaseLoading()) {
+          <div class="loading-state">載入中...</div>
+        } @else {
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>類別</th>
+                <th>品項</th>
+                <th>箱數</th>
+                <th>個數</th>
+                <th>輸入者</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (showPurchaseInlineAdd()) {
+                <tr class="inline-add-row">
+                  <td><input type="datetime-local" [(ngModel)]="purchaseForm.date" style="width: 175px;" /></td>
+                  <td>
+                    <select [(ngModel)]="purchaseForm.category" style="width: 110px;">
+                      <option value="">請選擇</option>
+                      @for (cat of categoryKeys; track cat) {
+                        <option [value]="cat">{{ CATEGORY_NAMES[cat] }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    <select [(ngModel)]="purchaseForm.item" style="width: 120px;">
+                      <option value="">請選擇</option>
+                      @for (item of getItemSuggestions(purchaseForm.category); track item) {
+                        <option [value]="item">{{ item }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td><input type="number" [(ngModel)]="purchaseForm.boxQuantity" min="1" style="width: 60px;" /></td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>
+                    <button class="btn-sm btn-save" (click)="saveInlinePurchase()" [disabled]="!isPurchaseFormValid">儲存</button>
+                    <button class="btn-sm btn-secondary" (click)="showPurchaseInlineAdd.set(false)">取消</button>
+                  </td>
+                </tr>
+              }
+              @for (item of purchases(); track item.id) {
+                <tr>
+                  <td>{{ formatDateTime(item.date) }}</td>
+                  <td>{{ CATEGORY_NAMES[item.category] }}</td>
+                  <td>{{ item.item }}</td>
+                  <td>{{ item.boxQuantity || '-' }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.createdBy }}</td>
+                  <td>
+                    <button class="btn-sm btn-edit" (click)="openPurchaseModal(item)">編輯</button>
+                    <button class="btn-sm btn-delete" (click)="deletePurchase(item.id)">刪除</button>
+                  </td>
+                </tr>
+              }
+              @if (purchases().length === 0 && !showPurchaseInlineAdd()) {
+                <tr><td colspan="7" class="empty-state">尚無進貨紀錄</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- ========== Tab 2: 消耗紀錄 ========== -->
+    @if (activeTab() === 'consumption') {
+    <div class="tab-panel">
+      <div class="sub-tabs">
+        <button [class.active]="consumptionSubTab() === 'query'" (click)="consumptionSubTab.set('query')">耗材查詢</button>
+        <button [class.active]="consumptionSubTab() === 'theoretical'" (click)="consumptionSubTab.set('theoretical')">排程推算</button>
+        <button [class.active]="consumptionSubTab() === 'summary'" (click)="consumptionSubTab.set('summary')">當月總量</button>
+        <button [class.active]="consumptionSubTab() === 'upload'" (click)="consumptionSubTab.set('upload')">資料上傳</button>
+      </div>
+
+      <!-- 耗材查詢 -->
+      @if (consumptionSubTab() === 'query') {
+      <div class="sub-panel">
+        <div class="search-controls">
+          <div class="group-filters">
+            <div class="search-field">
+              <label>頻率</label>
+              <select [(ngModel)]="groupSearchParams.freq">
+                <option value="一三五">一三五</option>
+                <option value="二四六">二四六</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label>班別</label>
+              <select [(ngModel)]="groupSearchParams.shift">
+                <option value="early">早班</option>
+                <option value="noon">午班</option>
+                <option value="late">晚班</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label>盤點月份</label>
+              <input type="month" [(ngModel)]="groupSearchParams.month" />
+            </div>
+          </div>
+          <button (click)="handleConsumptionSearch()" [disabled]="consumptionLoading()" class="btn-primary">
+            {{ consumptionLoading() ? '查詢中...' : '查詢耗材' }}
+          </button>
+          <button
+            (click)="exportConsumablesToExcel()"
+            [disabled]="consumptionLoading() || processedConsumptionData().length === 0"
+            class="btn-success"
+          >匯出 Excel</button>
+        </div>
+
+        <div class="report-display">
+          @if (consumptionLoading()) {
+            <div class="loading-state">正在查詢耗材資料...</div>
+          } @else if (!consumptionSearchPerformed()) {
+            <div class="placeholder-text">請選擇條件並點擊查詢。</div>
+          } @else if (processedConsumptionData().length === 0) {
+            <div class="empty-state">查無符合條件的病人或耗材資料。</div>
+          } @else {
+            <div class="table-container consumption-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="sticky-col col-freq">頻率</th>
+                    <th rowspan="2" class="sticky-col col-shift">班別</th>
+                    <th rowspan="2" class="sticky-col col-bed">床號</th>
+                    <th rowspan="2" class="sticky-col col-mrn">病歷號</th>
+                    <th rowspan="2" class="sticky-col col-name">姓名</th>
+                    @if (dynamicHeaders().artificialKidney.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().artificialKidney.length">人工腎臟</th>
+                    }
+                    @if (dynamicHeaders().dialysateCa.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().dialysateCa.length">透析藥水CA</th>
+                    }
+                    @if (dynamicHeaders().bicarbonateType.length > 0) {
+                      <th [attr.colspan]="dynamicHeaders().bicarbonateType.length">B液種類</th>
+                    }
+                  </tr>
+                  <tr>
+                    @for (header of flattenedHeaders; track header) {
+                      <th>{{ header }}</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of processedConsumptionData(); track row.patientId) {
+                    <tr>
+                      <td class="sticky-col col-freq">{{ row.freq || '-' }}</td>
+                      <td class="sticky-col col-shift">{{ formatShift(row.shiftIndex) }}</td>
+                      <td class="sticky-col col-bed">{{ row.bedNum || '-' }}</td>
+                      <td class="sticky-col col-mrn">{{ row.medicalRecordNumber || '-' }}</td>
+                      <td class="sticky-col col-name">{{ row.patientName }}</td>
+                      @for (header of flattenedHeaders; track header) {
+                        <td>{{ row.consumableCounts[header] || '' }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- 當月總量 -->
+      @if (consumptionSubTab() === 'summary') {
+      <div class="sub-panel">
+        <div class="search-controls">
+          <div class="search-field">
+            <label>選擇月份</label>
+            <input type="month" [(ngModel)]="summaryMonth" />
+          </div>
+          <button (click)="loadMonthlySummary()" [disabled]="summaryLoading()" class="btn-primary">
+            {{ summaryLoading() ? '載入中...' : '查詢總量' }}
+          </button>
+          <button
+            (click)="exportMonthlySummary()"
+            [disabled]="summaryLoading() || !summaryLoaded()"
+            class="btn-success"
+          >匯出 Excel</button>
+        </div>
+
+        <div class="report-display">
+          @if (summaryLoading()) {
+            <div class="loading-state">正在計算當月消耗總量...</div>
+          } @else if (!summaryLoaded()) {
+            <div class="placeholder-text">請選擇月份並點擊查詢。</div>
+          } @else {
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>類別</th>
+                    <th>品項</th>
+                    <th>每箱數量</th>
+                    <th>當月消耗(個)</th>
+                    <th>當月消耗(箱)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (category of categoryKeys; track category) {
+                    @for (item of getSummaryItemKeys(category); track item) {
+                      <tr>
+                        <td>{{ CATEGORY_NAMES[category] }}</td>
+                        <td>{{ item }}</td>
+                        <td>{{ getUnitsPerBox(category, item) }}</td>
+                        <td>{{ monthlySummaryData[category][item] }}</td>
+                        <td class="box-cell">{{ calculateBoxes(category, item, monthlySummaryData[category][item]) }}</td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="summary-total-row">
+                    <td colspan="3"><strong>各類別小計</strong></td>
+                    <td colspan="2"></td>
+                  </tr>
+                  @for (category of categoryKeys; track category) {
+                    <tr class="category-total">
+                      <td>{{ CATEGORY_NAMES[category] }}</td>
+                      <td colspan="2">合計</td>
+                      <td><strong>{{ getCategoryTotal(category) }}</strong></td>
+                      <td class="box-cell">-</td>
+                    </tr>
+                  }
+                </tfoot>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- 資料上傳 -->
+      @if (consumptionSubTab() === 'upload') {
+      <div class="sub-panel upload-panel">
+        <div class="upload-core-panel">
+          <h4>批次上傳每月耗材 Excel</h4>
+          <div
+            class="upload-drop-zone"
+            [class.is-dragover]="isDragOver()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+          >
+            <div class="upload-icon">&#x1F4E4;</div>
+            @if (!selectedFile()) {
+              <h3>拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
+            } @else {
+              <h3>已選擇檔案：<strong>{{ selectedFile()!.name }}</strong></h3>
+            }
+            <p class="upload-hint">
+              支援 .xlsx, .xls 格式。請確保標題行包含 '人工腎臟', '透析藥水CA', 或 'B液種類'。
+            </p>
+            <input
+              id="file-input"
+              type="file"
+              (change)="onFileSelect($event)"
+              accept=".xlsx, .xls"
+              [disabled]="isUploading()"
+            />
+            <label for="file-input" class="file-input-label">
+              {{ selectedFile() ? '重新選擇檔案' : '選擇檔案' }}
+            </label>
+          </div>
+          <button class="btn-primary upload-btn-main" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
+            {{ isUploading() ? '處理中...' : '開始上傳' }}
+          </button>
+          @if (uploadResult()) {
+            <div
+              class="upload-result-toast"
+              [class.has-error]="uploadResult()!.errorCount > 0"
+              [class.is-success]="uploadResult()!.errorCount === 0"
+            >
+              {{ uploadResult()!.message }}
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- 排程推算 (Theoretical Consumption) -->
+      @if (consumptionSubTab() === 'theoretical') {
+      <div class="sub-panel">
+        <div class="search-controls">
+          <div class="search-field">
+            <label>起始日期</label>
+            <input type="date" [(ngModel)]="theoreticalFilter.startDate" />
+          </div>
+          <div class="search-field">
+            <label>結束日期</label>
+            <input type="date" [(ngModel)]="theoreticalFilter.endDate" />
+          </div>
+          <button class="btn-primary" (click)="runTheoreticalConsumption()" [disabled]="theoreticalLoading()">
+            {{ theoreticalLoading() ? '推算中...' : '開始推算' }}
+          </button>
+        </div>
+
+        @if (theoreticalResult()) {
+        <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 1rem;">
+          查詢期間：{{ theoreticalResult()!.period.start }} ～ {{ theoreticalResult()!.period.end }}，
+          共處理 {{ theoreticalResult()!.totalSlots }} 筆排程。
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>類別</th>
+                <th>品項</th>
+                <th>理論消耗數量</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (category of categoryKeys; track category) {
+                @for (entry of (theoreticalResult()!.grouped[category] | keyvalue); track entry.key) {
+                  <tr>
+                    <td>{{ CATEGORY_NAMES[category] }}</td>
+                    <td>{{ entry.key }}</td>
+                    <td><strong>{{ entry.value }}</strong></td>
+                  </tr>
+                }
+              }
+              @if (theoreticalResult()!.items.length === 0) {
+                <tr>
+                  <td colspan="3" style="color: #6c757d;">查無消耗紀錄（可能該期間沒有排程或病人醫囑為空）</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else if (!theoreticalLoading()) {
+          <div class="empty-state">選擇日期範圍後，點擊「開始推算」來計算理論消耗量。</div>
+        }
+      </div>
+      }
+    </div>
+    }
+
+    <!-- ========== Tab 3: 每月盤點 ========== -->
+    @if (activeTab() === 'monthly') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>每月盤點</h3>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-field">
+          <label>盤點日</label>
+          <input type="date" [(ngModel)]="monthlyFilter.countDate" />
+        </div>
+        <div class="filter-field">
+          <label>盤點區間（起）</label>
+          <input type="date" [(ngModel)]="monthlyFilter.startDate" />
+        </div>
+        <div class="filter-field">
+          <label>盤點區間（迄）</label>
+          <input type="date" [(ngModel)]="monthlyFilter.endDate" />
+        </div>
+        <button class="btn-primary" (click)="calculateMonthlyInventory()" [disabled]="monthlyLoading()">
+          {{ monthlyLoading() ? '計算中...' : '計算庫存' }}
+        </button>
+        <button class="btn-secondary" (click)="loadSavedMonthlyCount()" [disabled]="monthlyLoading()">
+          載入歷史紀錄
+        </button>
+        <button class="btn-success" (click)="saveMonthlyCount()" [disabled]="!monthlyCalculated() || monthlyLoading()">
+          儲存盤點結果
+        </button>
+      </div>
+
+      @if (monthlySavedInfo()) {
+        <div style="padding: 0.5rem 1rem; background: #d1ecf1; border-radius: 6px; margin-bottom: 0.75rem; font-size: 0.9rem; color: #0c5460;">
+          📋 已載入歷史紀錄 — 儲存者：{{ monthlySavedInfo()!.createdBy }}，儲存時間：{{ monthlySavedInfo()!.createdAt }}
+        </div>
+      }
+
+      @if (monthlyCalculated()) {
+        <div class="monthly-summary">
+          <div class="summary-card">
+            <h4>期初結存</h4>
+            <p>{{ monthlyFilter.startDate }} 之前</p>
+          </div>
+          <div class="summary-card">
+            <span class="operator">+</span>
+            <h4>區間進貨</h4>
+            <p>{{ monthlyFilter.startDate }} ~ {{ monthlyFilter.endDate }}</p>
+          </div>
+          <div class="summary-card">
+            <span class="operator">-</span>
+            <h4>區間消耗</h4>
+            <p>{{ monthlyFilter.startDate }} ~ {{ monthlyFilter.endDate }}</p>
+          </div>
+          <div class="summary-card result">
+            <span class="operator">=</span>
+            <h4>期末結存</h4>
+            <p>盤點日：{{ monthlyFilter.countDate }}</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">類別</th>
+                <th rowspan="2">品項</th>
+                <th colspan="2">期初結存</th>
+                <th colspan="2">區間進貨</th>
+                <th colspan="2">區間消耗</th>
+                <th colspan="2">期末結存</th>
+                <th rowspan="2">調整(個)</th>
+              </tr>
+              <tr>
+                <th>個數</th>
+                <th>箱數</th>
+                <th>個數</th>
+                <th>箱數</th>
+                <th>個數</th>
+                <th>箱數</th>
+                <th>個數</th>
+                <th>箱數</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (category of categoryKeys; track category) {
+                @for (entry of getMonthlyInventoryEntries(category); track entry.item) {
+                  <tr>
+                    <td>{{ CATEGORY_NAMES[category] }}</td>
+                    <td>{{ entry.item }}</td>
+                    <td>{{ entry.data.previousStock }}</td>
+                    <td class="box-cell">{{ calculateBoxes(category, entry.item, entry.data.previousStock) }}</td>
+                    <td class="positive">+{{ entry.data.purchased }}</td>
+                    <td class="box-cell positive">+{{ calculateBoxes(category, entry.item, entry.data.purchased) }}</td>
+                    <td class="negative">-{{ entry.data.consumed }}</td>
+                    <td class="box-cell negative">-{{ calculateBoxes(category, entry.item, entry.data.consumed) }}</td>
+                    <td class="result-cell">{{ entry.data.currentStock }}</td>
+                    <td class="result-cell box-cell">{{ calculateBoxes(category, entry.item, entry.data.currentStock) }}</td>
+                    <td>
+                      <input
+                        type="number"
+                        [(ngModel)]="entry.data.adjustment"
+                        class="adjustment-input"
+                        placeholder="調整值"
+                      />
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="placeholder-text">請選擇月份並點擊「計算庫存」。</div>
+      }
+    </div>
+    }
+
+    <!-- ========== Tab 4: 每週訂單 ========== -->
+    @if (activeTab() === 'weekly') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>每週訂單計算</h3>
+        <p class="panel-description">訂購量 = 安全庫存(9天) - 週二盤點</p>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-field">
+          <label>盤點日（週二）</label>
+          <input type="date" [(ngModel)]="weeklyFilter.countDate" />
+        </div>
+        <div class="filter-field">
+          <label>選擇週次</label>
+          <input type="week" [(ngModel)]="weeklyFilter.week" />
+        </div>
+        <button class="btn-primary" (click)="loadWeeklyData()" [disabled]="weeklyLoading()">
+          {{ weeklyLoading() ? '計算中...' : '計算訂單' }}
+        </button>
+      </div>
+
+      @if (weeklyDataLoaded()) {
+        <div class="weekly-content">
+          <!-- 週二盤點輸入區 -->
+          <div class="weekly-section">
+            <div class="section-header">
+              <h4>週二盤點輸入 ({{ weeklyFilter.countDate }})</h4>
+              <button class="btn-sm btn-primary" (click)="saveWeeklyCount()" [disabled]="weeklyLoading()">
+                儲存盤點
+              </button>
+            </div>
+            <div class="inventory-grid">
+              @for (category of categoryKeys; track category) {
+                <div class="category-section">
+                  <h5>{{ CATEGORY_NAMES[category] }}</h5>
+                  <div class="item-inputs">
+                    @for (item of getItemsForCategory(category); track item) {
+                      <div class="item-row">
+                        <label>{{ item }}</label>
+                        <div class="box-input-group">
+                          <input
+                            type="number"
+                            [(ngModel)]="weeklyCountBoxes[category][item]"
+                            (ngModelChange)="syncWeeklyCount()"
+                            placeholder="箱數"
+                            min="0"
+                            class="box-input"
+                          />
+                          <span class="box-unit">箱</span>
+                          @if (weeklyCountBoxes[category]?.[item]) {
+                            <span class="unit-hint">
+                              = {{ calculateWeeklyUnits(category, item) }} 個
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- 訂購建議表 -->
+          <div class="weekly-section">
+            <div class="section-header">
+              <h4>訂購建議</h4>
+              <button class="btn-success" (click)="exportWeeklyOrder()" [disabled]="!hasOrderData">
+                匯出訂單 (以箱為單位)
+              </button>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>類別</th>
+                    <th>品項</th>
+                    <th>每箱數量</th>
+                    <th>週二盤點(個)</th>
+                    <th>上週消耗(個)</th>
+                    <th>日均消耗</th>
+                    <th>安全庫存(9天)</th>
+                    <th>建議訂購(個)</th>
+                    <th>建議訂購(箱)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (category of categoryKeys; track category) {
+                    @for (item of getItemsForCategory(category); track item) {
+                      <tr>
+                        <td>{{ CATEGORY_NAMES[category] }}</td>
+                        <td>{{ item }}</td>
+                        <td>{{ getUnitsPerBox(category, item) }}</td>
+                        <td>{{ weeklyCount[category]?.[item] || 0 }}</td>
+                        <td>{{ getWeeklyConsumption(category, item) }}</td>
+                        <td>{{ getDailyAvg(category, item) }}</td>
+                        <td>{{ getSafetyStock(category, item) }}</td>
+                        <td [class.need-order]="getOrderQuantity(category, item) > 0">
+                          {{ getOrderQuantity(category, item) }}
+                        </td>
+                        <td [class.need-order]="getOrderQuantity(category, item) > 0" class="box-cell">
+                          {{ calculateBoxesRounded(category, item, getOrderQuantity(category, item)) }}
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="placeholder-text">請選擇週次並點擊「載入資料」。</div>
+      }
+    </div>
+    }
+  </main>
+
+  <!-- 訂單預覽 Modal -->
+  @if (showOrderPreview()) {
+  <div class="modal-overlay" (click)="showOrderPreview.set(false)">
+    <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>訂單預覽</h3>
+        <button class="modal-close" (click)="showOrderPreview.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="order-info-row">
+          <span><strong>訂購日期：</strong>{{ orderDate }}</span>
+          <span><strong>訂單使用日期：</strong>{{ orderPreviewDayLabels[0] }} ~ {{ orderPreviewDayLabels[5] }}</span>
+        </div>
+        <div class="table-container" style="margin-top: 0.75rem;">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width: 100px;">院內代碼</th>
+                <th style="min-width: 200px;">品項</th>
+                @for (label of orderPreviewDayLabels; track label) {
+                  <th style="min-width: 90px; text-align: center;">{{ label }}</th>
+                }
+                <th style="text-align: center;">合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of orderPreviewItems; track entry.label) {
+                <tr>
+                  <td>{{ entry.hospitalCode || '-' }}</td>
+                  <td>{{ entry.label }}</td>
+                  @for (dayIdx of [0, 1, 2, 3, 4, 5]; track dayIdx) {
+                    <td style="text-align: center;">
+                      <input type="number" min="0"
+                        [(ngModel)]="orderPreviewGrid[entry.category + '|' + entry.item][dayIdx]"
+                        style="width: 70px; text-align: center;"
+                        class="order-cell-input"
+                      />
+                    </td>
+                  }
+                  <td style="text-align: center; font-weight: 600;">
+                    {{ getOrderRowTotal(entry.category, entry.item) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p style="color: #6c757d; font-size: 0.85rem; margin-top: 0.5rem;">
+          💡 預設到貨日為週一、週三。可手動調整各日數量。
+        </p>
+        <div class="order-signature-row">
+          <span><strong>製表人：</strong>{{ authService.currentUser()?.name || '' }}</span>
+          <span><strong>洗腎室護理長：</strong>_______________</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showOrderPreview.set(false)">取消</button>
+        <button class="btn-success" (click)="confirmExportOrder()">確認匯出 Excel</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 進貨紀錄 Modal -->
+  @if (showPurchaseModal()) {
+  <div class="modal-overlay" (click)="onModalOverlayClick($event, 'purchase')">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>{{ editingPurchase() ? '編輯進貨紀錄' : '新增進貨紀錄' }}</h3>
+        <button class="modal-close" (click)="closePurchaseModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>日期 *</label>
+          <input type="date" [(ngModel)]="purchaseForm.date" required />
+        </div>
+        <div class="form-field">
+          <label>類別 *</label>
+          <select [(ngModel)]="purchaseForm.category" required>
+            <option value="">請選擇</option>
+            <option value="artificialKidney">人工腎臟</option>
+            <option value="dialysateCa">透析藥水CA</option>
+            <option value="bicarbonateType">B液種類</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>品項 *</label>
+          <select [(ngModel)]="purchaseForm.item" required>
+            <option value="">請選擇品項</option>
+            @for (item of getItemSuggestions(purchaseForm.category); track item) {
+              <option [value]="item">{{ item }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-field">
+          <label>箱數 *</label>
+          <input type="number" [(ngModel)]="purchaseForm.boxQuantity" min="1" required />
+          @if (purchaseForm.item && purchaseForm.boxQuantity) {
+            <small class="field-hint">
+              = {{ calculateUnits(purchaseForm.category, purchaseForm.item, purchaseForm.boxQuantity) }} 個
+              (每箱 {{ getUnitsPerBox(purchaseForm.category, purchaseForm.item) }} 個)
+            </small>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closePurchaseModal()">取消</button>
+        <button class="btn-primary" (click)="savePurchase()" [disabled]="!isPurchaseFormValid">
+          {{ editingPurchase() ? '更新' : '新增' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 品項設定 Modal -->
+  @if (showItemModal()) {
+  <div class="modal-overlay" (click)="onModalOverlayClick($event, 'item')">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>{{ editingItem() ? '編輯品項' : '新增品項' }}</h3>
+        <button class="modal-close" (click)="closeItemModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>類別 *</label>
+          <select [(ngModel)]="itemForm.category" required>
+            <option value="">請選擇</option>
+            <option value="artificialKidney">人工腎臟</option>
+            <option value="dialysateCa">透析藥水CA</option>
+            <option value="bicarbonateType">B液種類</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>品項名稱 *</label>
+          <input type="text" [(ngModel)]="itemForm.name" placeholder="例如：FX80" required />
+        </div>
+        <div class="form-field">
+          <label>院內代碼</label>
+          <input type="text" [(ngModel)]="itemForm.hospitalCode" placeholder="例如：AK-001" />
+        </div>
+        <div class="form-field">
+          <label>每箱個數</label>
+          <input type="number" [(ngModel)]="itemForm.unitsPerBox" placeholder="例如：20" min="1" />
+        </div>
+        <div class="form-field">
+          <label>安全庫存量</label>
+          <input type="number" [(ngModel)]="itemForm.safeInventoryLevel" placeholder="例如：100" min="0" />
+        </div>
+        <div class="form-field">
+          <label>廠牌</label>
+          <input type="text" [(ngModel)]="itemForm.brand" placeholder="例如：Fresenius" />
+        </div>
+        <div class="form-field">
+          <label>廠商聯絡電話</label>
+          <input type="tel" [(ngModel)]="itemForm.vendorPhone" placeholder="例如：02-12345678" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeItemModal()">取消</button>
+        <button class="btn-primary" (click)="saveInventoryItem()" [disabled]="!isItemFormValid">
+          {{ editingItem() ? '更新' : '新增' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 洗腎機設定 Modal (Combined: list + form) -->
+  @if (showMachineConfigModal()) {
+  <div class="modal-overlay" (click)="onModalOverlayClick($event, 'machineConfig')">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>洗腎機型 → B粉/B液 對照設定</h3>
+        <button class="modal-close" (click)="closeMachineConfigModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Existing configs list -->
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary, #666);">已設定的機型對照</h4>
+          @if (machineConfigs().length === 0) {
+            <div class="empty-state" style="padding: 0.5rem; font-size: 0.9rem;">尚無設定</div>
+          } @else {
+            <table>
+              <thead>
+                <tr>
+                  <th>洗腎機型號</th>
+                  <th>預設 B粉/B液</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (config of machineConfigs(); track config.id) {
+                  <tr>
+                    <td>{{ config.machineType }}</td>
+                    <td>{{ config.defaultBicarbonate }}</td>
+                    <td>
+                      <button class="btn-sm btn-edit" (click)="editMachineConfigInline(config)">編輯</button>
+                      <button class="btn-sm btn-delete" (click)="deleteMachineConfig(config)">刪除</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color, #ddd); margin: 1rem 0;" />
+
+        <!-- Add/edit form -->
+        <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary, #666);">
+          {{ editingMachineConfig() ? '編輯機型' : '新增機型' }}
+        </h4>
+        <div class="form-field">
+          <label>洗腎機型號 *</label>
+          <input type="text" [(ngModel)]="machineConfigForm.machineType" placeholder="例如：FMC 5008S" required />
+        </div>
+        <div class="form-field">
+          <label>預設 B粉/B液 *</label>
+          <select [(ngModel)]="machineConfigForm.defaultBicarbonate" required>
+            <option value="">請選擇</option>
+            @for (item of (knownItems['bicarbonateType'] || []); track item) {
+              <option [value]="item">{{ item }}</option>
+            }
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+          @if (editingMachineConfig()) {
+            <button class="btn-secondary" (click)="cancelMachineConfigEdit()">取消編輯</button>
+          }
+          <button class="btn-primary" (click)="saveMachineConfig()" [disabled]="!isMachineConfigFormValid">
+            {{ editingMachineConfig() ? '更新' : '新增' }}
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeMachineConfigModal()">關閉</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <app-alert-dialog
+    [isVisible]="isAlertDialogVisible()"
+    [title]="alertDialogTitle()"
+    [message]="alertDialogMessage()"
+    (confirm)="isAlertDialogVisible.set(false)"
+  ></app-alert-dialog>
+</div>

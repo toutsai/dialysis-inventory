@@ -1,0 +1,286 @@
+/* 檔案路徑: src/assets/main.css (最終全域版) */
+/* 定義全域顏色變數 */
+:root {
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --border-color: #dee2e6;
+  --sidebar-bg: #f8f9fa;
+  --green-bg: #e8f5e9;
+  --blue-bg: #d4ebfc;
+  --red-bg: #ffcdd2;
+  --orange-bg: #fccc7e;
+  --hepatitis-bg: #fffde7;
+  --red-text: #c62828;
+}
+
+/* 基礎 HTML/Body 樣式重設 */
+html {
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background-color: var(--sidebar-bg); /* 使用變數 */
+  color: #212529;
+  line-height: 1.5;
+}
+
+/* 全域頁面容器樣式 */
+.page-container {
+  width: 100%;
+  max-width: 2000px;
+  margin: 0 auto;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column; /* 讓內部的 header 和 table-wrapper 垂直排列 */
+  height: 100%; /* 讓它填滿父層 .content-area 的高度 */
+  padding: 20px; /* 為了佈局，我們先把 padding 移到內層 */
+  overflow-y: auto; /* 當垂直內容溢出時，顯示滾動條 */
+  box-sizing: border-box;
+}
+
+/* 定義全域通用的頁面標題樣式 */
+.page-title {
+  font-size: 32px; /* 或者你喜歡的任何統一大小，例如 2rem 或 32px */
+  font-weight: bold; /* 確保所有標題都是粗體 */
+  color: #333;
+  margin-bottom: 20px; /* 在標題和下方內容之間增加一些間距 */
+  margin-top: 0;
+}
+.page-header {
+  flex-shrink: 0; /* 確保頭部區域不會被壓縮 */
+}
+.page-main-content {
+  flex-grow: 1; /* 讓主內容區佔滿所有剩餘的垂直空間 */
+  min-height: 0; /* 防止子元素溢出的關鍵技巧 */
+  display: flex; /* 讓它自己也成為 Flex 容器，以便內部佈局（例如 weeklyview 的側邊欄） */
+}
+
+/* 定義通用的表格樣式 */
+.weekly-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.weekly-schedule-table th,
+.weekly-schedule-table td {
+  border: 1px solid var(--border-color);
+  padding: 4px;
+  text-align: center;
+  vertical-align: middle;
+  height: 65px;
+}
+.weekly-schedule-table thead th {
+  background-color: #e9ecef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.hepatitis-bed td {
+  background-color: var(--hepatitis-bg);
+}
+.weekly-schedule-table th:nth-child(1),
+.weekly-schedule-table td:nth-child(1) {
+  width: 70px; /* 調整你喜歡的寬度，例如 90px */
+}
+.weekly-schedule-table th:nth-child(2),
+.weekly-schedule-table td:nth-child(2) {
+  width: 70px; /* 調整你喜歡的寬度，例如 70px */
+}
+.header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.date-navigator {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.date-navigator button,
+.main-actions button {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 1em;
+  cursor: pointer;
+  background-color: #fff;
+}
+.header-toolbar h1 {
+  margin: 0;
+  text-align: left;
+}
+.main-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+/* --- 關鍵修正：提高 .btn-save 的特殊性 --- */
+/* 我們告訴瀏覽器：我要找的是一個在 .main-actions 裡面的、
+   同時擁有 button 標籤和 .btn-save class 的元素。
+   這個選擇器的權重遠高於上面那條通用規則。*/
+.main-actions button.btn-save {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+.main-actions button.btn-save:hover:not(:disabled) {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+.main-actions button.btn-save:disabled {
+  background-color: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+#status-text {
+  font-weight: bold;
+  color: #6c757d;
+}
+.disease-tag {
+  /* 佈局與定位 */
+  display: inline-block;
+  vertical-align: middle;
+
+  /* 尺寸與邊距 */
+  padding: 1px 6px;
+  line-height: 1.2;
+
+  /* 顏色與外觀 (新的描邊樣式) */
+  background-color: transparent;
+  border: 1.5px solid #dc3545;
+  color: #dc3545;
+  border-radius: 5px;
+
+  /* 字體 */
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.slot-patient-name {
+  display: flex;
+  align-items: center;
+  gap: 5px; /* 姓名和標籤之間的間距 */
+}
+
+/* 【新增】定義一個專門用於「警告」或「檢視」功能的黃色按鈕樣式 */
+.btn-warning {
+  background-color: #ffc107; /* 一個明亮的黃色 (Bootstrap 的 warning 顏色) */
+  border-color: #ffc107;
+  color: #212529; /* 深色文字以確保可讀性 */
+  font-weight: 500;
+}
+/*----1140701新增----*/
+/* 基礎按鈕樣式 (可選，但推薦) */
+.btn {
+  display: inline-block;
+  padding: 8px 15px; /* 控制大小 */
+  height: 45px; /* 控制高度 */
+  box-sizing: border-box; /* 確保 padding 不會撐大高度 */
+  font-size: 0.95em;
+  font-weight: 500;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid #ccc; /* 預設邊框 */
+  border-radius: 5px; /* 圓角 */
+  background-color: #fff; /* 預設背景 */
+  color: #212529; /* 預設文字顏色 */
+  transition: all 0.2s;
+}
+.btn:hover:not(:disabled) {
+  border-color: #888;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* 成功按鈕 (綠色) */
+.btn-success {
+  color: #fff;
+  background-color: #28a745;
+  border-color: #28a745;
+}
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+/* 資訊按鈕 (藍綠色) */
+.btn-info {
+  color: #fff;
+  background-color: #17a2b8;
+  border-color: #17a2b8;
+}
+.btn-info:hover {
+  background-color: #138496;
+  border-color: #117a8b;
+}
+
+/* 警告按鈕 (黃色) */
+.btn-warning {
+  background-color: #ffc107; /* 一個明亮的黃色 (Bootstrap 的 warning 顏色) */
+  border-color: #ffc107;
+  color: #212529; /* 深色文字以確保可讀性 */
+  font-weight: 500;
+}
+/* 為黃色按鈕添加 hover 效果 */
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+
+/* 次要按鈕 (灰色) */
+.btn-secondary {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+.btn-secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+.add-btn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* =======================================
+   Global Print Styles (全域列印樣式)
+   ======================================= */
+@media print {
+  /* 隱藏 ID 為 app-sidebar 或 class 為 sidebar 的主導覽列 */
+  /* 您可以使用其中一個，或者兩個都用以確保萬無一失 */
+  #app-sidebar,
+  .sidebar {
+    display: none !important;
+  }
+}

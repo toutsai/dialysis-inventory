@@ -1,0 +1,92 @@
+# 檔案路徑: .github/workflows/deploy-to-develop.yml (已修正)
+
+name: Deploy to Development Environment
+
+on:
+  push:
+    branches:
+      - develope-branch # 確保這個分支名稱與您的 GitHub 分支完全一致
+
+jobs:
+  build_and_deploy_to_dev:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_PROJECT_ID: my-dialysis-app-develop # 直接指定開發環境的專案 ID
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY_DEV }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN_DEV }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID_DEV }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET_DEV }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID_DEV }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          project_id: my-dialysis-app-develop
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Set up Firebase project
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}" > /tmp/service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/service-account.json
+          firebase use my-dialysis-app-develop
+
+      # ✨ 核心修正：將部署過程分為多個步驟
+      - name: Build Vue Application
+        run: npm run build:dev  # 使用開發環境的建置指令
+
+      - name: Deploy Firebase Hosting and Rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service-account.json
+        run: |
+          echo "部署 Hosting 和 Firestore Rules..."
+          firebase deploy --project my-dialysis-app-develop --only hosting,firestore:rules
+
+      # 分批部署 Firebase Functions 以避免 timeout
+      - name: Deploy Firebase Functions (Batch 1)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service-account.json
+        run: |
+          echo "開始部署第一批 Functions..."
+          for i in {1..3}; do
+            echo "嘗試第 $i 次部署..."
+            firebase deploy --project my-dialysis-app-develop --only "functions:checkExpiredMemos,functions:customLogin,functions:ensureFutureSchedules" && { echo "部署成功！"; break; } || { echo "部署失敗，等待 5 秒後重試..."; sleep 5; }
+          done
+
+      - name: Deploy Firebase Functions (Batch 2)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service-account.json
+        run: |
+          echo "開始部署第二批 Functions..."
+          for i in {1..3}; do
+            echo "嘗試第 $i 次部署..."
+            firebase deploy --project my-dialysis-app-develop --only "functions:handleNewExceptionRequest,functions:initializeFutureSchedules,functions:onExceptionDeleted" && { echo "部署成功！"; break; } || { echo "部署失敗，等待 5 秒後重試..."; sleep 5; }
+          done
+
+      - name: Deploy Firebase Functions (Batch 3)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service-account.json
+        run: |
+          echo "開始部署第三批 Functions..."
+          for i in {1..3}; do
+            echo "嘗試第 $i 次部署..."
+            firebase deploy --project my-dialysis-app-develop --only "functions:processExceptionTask,functions:processLabReport,functions:reapplyAllActiveExceptions,functions:syncMasterScheduleToFuture" && { echo "部署成功！"; break; } || { echo "部署失敗，等待 5 秒後重試..."; sleep 5; }
+          done

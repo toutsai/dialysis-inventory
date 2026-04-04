@@ -1,0 +1,378 @@
+@import '@fortawesome/fontawesome-free/css/all.css';
+
+/* ===========================================
+   全域樣式 - 部北透析管理平台
+   Global Styles - Dialysis Management Platform
+   =========================================== */
+
+/* CSS Variables */
+:root {
+  --primary-color: #1abc9c;
+  --primary-hover: #16a085;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --border-color: #dee2e6;
+  --sidebar-bg: #f8f9fa;
+  --green-bg: #e8f5e9;
+  --blue-bg: #d4ebfc;
+  --red-bg: #ffcdd2;
+  --orange-bg: #fccc7e;
+  --hepatitis-bg: #fffde7;
+  --red-text: #c62828;
+}
+
+/* CSS Reset */
+html {
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background-color: var(--sidebar-bg);
+  color: #212529;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* Page Container */
+.page-container {
+  width: 100%;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Page Title */
+.page-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20px;
+  margin-top: 0;
+}
+
+/* Page Header */
+.page-header {
+  flex-shrink: 0;
+}
+
+/* Page Main Content */
+.page-main-content {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* Header Toolbar */
+.header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.header-toolbar h1 {
+  margin: 0;
+  text-align: left;
+}
+
+/* Date Navigator */
+.date-navigator {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.date-navigator button,
+.main-actions button {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 1em;
+  cursor: pointer;
+  background-color: #fff;
+}
+
+/* Main Actions */
+.main-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.main-actions button.btn-save {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.main-actions button.btn-save:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.main-actions button.btn-save:disabled {
+  background-color: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Status Text */
+#status-text {
+  font-weight: bold;
+  color: #6c757d;
+}
+
+/* Weekly Schedule Table */
+.weekly-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.weekly-schedule-table th,
+.weekly-schedule-table td {
+  border: 1px solid var(--border-color);
+  padding: 4px;
+  text-align: center;
+  vertical-align: middle;
+  height: 65px;
+}
+
+.weekly-schedule-table thead th {
+  background-color: #e9ecef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.hepatitis-bed td {
+  background-color: var(--hepatitis-bg);
+}
+
+.weekly-schedule-table th:nth-child(1),
+.weekly-schedule-table td:nth-child(1) {
+  width: 70px;
+}
+
+.weekly-schedule-table th:nth-child(2),
+.weekly-schedule-table td:nth-child(2) {
+  width: 70px;
+}
+
+/* Disease Tag */
+.disease-tag {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 1px 6px;
+  line-height: 1.2;
+  background-color: transparent;
+  border: 1.5px solid #dc3545;
+  color: #dc3545;
+  border-radius: 5px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+/* Slot Patient Name */
+.slot-patient-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Base Button */
+.btn {
+  display: inline-block;
+  padding: 8px 15px;
+  height: 45px;
+  box-sizing: border-box;
+  font-size: 0.95em;
+  font-weight: 500;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #fff;
+  color: #212529;
+  transition: all 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: #888;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Success Button (Green) */
+.btn-success {
+  color: #fff;
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+/* Info Button (Teal) */
+.btn-info {
+  color: #fff;
+  background-color: #17a2b8;
+  border-color: #17a2b8;
+}
+
+.btn-info:hover:not(:disabled) {
+  background-color: #138496;
+  border-color: #117a8b;
+}
+
+/* Warning Button (Yellow) */
+.btn-warning {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+  font-weight: 500;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+
+/* Secondary Button (Gray) */
+.btn-secondary {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+/* Primary Button */
+.btn-primary {
+  color: #fff;
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Danger Button (Red) */
+.btn-danger {
+  color: #fff;
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+/* Add Button */
+.add-btn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.add-btn:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+/* Print Styles */
+@media print {
+  #app-sidebar,
+  .sidebar {
+    display: none !important;
+  }
+}
+
+/* ================================== */
+/* === Global Button Styles === */
+/* ================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background-color: #fff;
+  color: #333;
+  white-space: nowrap;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.btn:hover:not(:disabled) {
+  background-color: #e9ecef;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary { background-color: #007bff; color: white; border-color: #007bff; }
+.btn-primary:hover:not(:disabled) { background-color: #0069d9; border-color: #0062cc; }
+
+.btn-success { background-color: #28a745; color: white; border-color: #28a745; }
+.btn-success:hover:not(:disabled) { background-color: #218838; border-color: #1e7e34; }
+
+.btn-info { background-color: #17a2b8; color: white; border-color: #17a2b8; }
+.btn-info:hover:not(:disabled) { background-color: #138496; border-color: #117a8b; }
+
+.btn-warning { background-color: #ffc107; color: #212529; border-color: #ffc107; }
+.btn-warning:hover:not(:disabled) { background-color: #e0a800; border-color: #d39e00; }
+
+.btn-secondary { background-color: #6c757d; color: white; border-color: #6c757d; }
+.btn-secondary:hover:not(:disabled) { background-color: #5a6268; border-color: #545b62; }
+
+.btn-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
+.btn-danger:hover:not(:disabled) { background-color: #c82333; border-color: #bd2130; }
+
+/* ================================== */
+/* === Responsive Utility Classes === */
+/* ================================== */
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .desktop-only-flex { display: none !important; }
+}

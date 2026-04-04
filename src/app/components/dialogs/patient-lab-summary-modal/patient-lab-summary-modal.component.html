@@ -1,0 +1,18 @@
+@if (isVisible) {
+  <div class="modal-overlay" (click)="handleClose()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ patient?.name }} - 檢驗報告摘要</h2>
+        <button (click)="handleClose()" class="close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        @if (patient) {
+          <app-patient-lab-summary-panel
+            [patient]="patient"
+            (saveRecordEvent)="handleSaveRecord($event)"
+          ></app-patient-lab-summary-panel>
+        }
+      </div>
+    </div>
+  </div>
+}

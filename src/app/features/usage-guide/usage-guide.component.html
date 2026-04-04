@@ -1,0 +1,199 @@
+<div class="usage-guide-container">
+  <header class="page-header">
+    <h1><i class="fas fa-book-open"></i> 平台使用說明</h1>
+    <p class="subtitle">部北透析管理平台完整操作指南</p>
+  </header>
+
+  <div class="guide-content">
+    <nav class="guide-nav">
+      <ul>
+        <li
+          *ngFor="let section of sections"
+          [class.active]="activeSection() === section.id"
+          (click)="activeSection.set(section.id)"
+        >
+          <i [class]="'fas ' + section.icon"></i>
+          <span>{{ section.name }}</span>
+        </li>
+      </ul>
+    </nav>
+
+    <main class="guide-main">
+      <!-- 平台總覽 -->
+      <section *ngIf="activeSection() === 'overview'" class="guide-section">
+        <h2><i class="fas fa-home"></i> 平台總覽</h2>
+        <div class="overview-card">
+          <h3>關於本平台</h3>
+          <p>
+            部北透析管理平台是專為透析室設計的完整管理系統，提供排班管理、護理分組、病人管理、
+            工作協作等功能，協助團隊提升工作效率與照護品質。
+          </p>
+        </div>
+        <div class="overview-card">
+          <h3>角色與權限</h3>
+          <div class="role-grid">
+            <div class="role-item">
+              <div class="role-badge admin">管理員</div>
+              <p>完整存取所有功能，包含使用者管理</p>
+            </div>
+            <div class="role-item">
+              <div class="role-badge editor">編輯者</div>
+              <p>護理師角色，管理排班、分組、工作日誌</p>
+            </div>
+            <div class="role-item">
+              <div class="role-badge contributor">貢獻者</div>
+              <p>醫師角色，管理醫囑、檢驗報告、醫師班表</p>
+            </div>
+            <div class="role-item">
+              <div class="role-badge viewer">查看者</div>
+              <p>查閱權限，檢視日誌、耗材、醫師班表</p>
+            </div>
+          </div>
+        </div>
+        <div class="overview-card">
+          <h3>側邊欄結構</h3>
+          <div class="sidebar-structure">
+            <div class="structure-group">
+              <h4>共用功能區</h4>
+              <ul>
+                <li>每日排程 - 當日透析排班</li>
+                <li>護理分組 - 護理師分組分配</li>
+                <li>我的今日病人 - 個人負責病人</li>
+                <li>訊息中心 - 協作與通知</li>
+              </ul>
+            </div>
+            <div class="structure-group">
+              <h4>排班管理（管理員/編輯者）</h4>
+              <ul>
+                <li>週排班 - 一週排班總覽</li>
+                <li>床位總表 - 完整床位管理</li>
+                <li>調班換床 - 例外排班管理</li>
+                <li>預約變更 - 未來變更排程</li>
+              </ul>
+            </div>
+            <div class="structure-group">
+              <h4>後臺管理</h4>
+              <ul>
+                <li>工作日誌、護理班表、KiDit 申報</li>
+                <li>醫師班表、檢驗報告、藥囑管理</li>
+                <li>每月耗材、統計報表、使用者管理</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 共用功能 -->
+      <section *ngIf="activeSection() === 'common'" class="guide-section">
+        <h2><i class="fas fa-users"></i> 共用功能</h2>
+        <p class="section-desc">所有使用者皆可使用的核心功能</p>
+        <ng-container *ngFor="let key of commonPages">
+          <div class="page-card">
+            <div class="page-header" (click)="togglePage(key)">
+              <div class="page-title">
+                <i [class]="'fas ' + pageGuides[key].icon"></i>
+                <h3>{{ pageGuides[key].name }}</h3>
+                <span class="page-path">{{ pageGuides[key].path }}</span>
+              </div>
+              <div class="page-meta">
+                <span class="role-tag">{{ pageGuides[key].roles }}</span>
+                <i [class]="'fas ' + (isExpanded(key) ? 'fa-chevron-up' : 'fa-chevron-down')"></i>
+              </div>
+            </div>
+            <div *ngIf="isExpanded(key)" class="page-content">
+              <p class="page-desc">{{ pageGuides[key].description }}</p>
+              <div class="feature-list">
+                <div *ngFor="let feature of pageGuides[key].features" class="feature-item">
+                  <span class="feature-title">{{ feature.title }}</span>
+                  <span class="feature-desc">{{ feature.desc }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </section>
+
+      <!-- 排班管理 -->
+      <section *ngIf="activeSection() === 'admin-editor'" class="guide-section">
+        <h2><i class="fas fa-calendar-alt"></i> 排班管理</h2>
+        <p class="section-desc">管理員與編輯者專用的排班管理功能</p>
+        <ng-container *ngFor="let key of adminEditorPages">
+          <div class="page-card">
+            <div class="page-header" (click)="togglePage(key)">
+              <div class="page-title">
+                <i [class]="'fas ' + pageGuides[key].icon"></i>
+                <h3>{{ pageGuides[key].name }}</h3>
+                <span class="page-path">{{ pageGuides[key].path }}</span>
+              </div>
+              <div class="page-meta">
+                <span class="role-tag">{{ pageGuides[key].roles }}</span>
+                <i [class]="'fas ' + (isExpanded(key) ? 'fa-chevron-up' : 'fa-chevron-down')"></i>
+              </div>
+            </div>
+            <div *ngIf="isExpanded(key)" class="page-content">
+              <p class="page-desc">{{ pageGuides[key].description }}</p>
+              <div class="feature-list">
+                <div *ngFor="let feature of pageGuides[key].features" class="feature-item">
+                  <span class="feature-title">{{ feature.title }}</span>
+                  <span class="feature-desc">{{ feature.desc }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </section>
+
+      <!-- 後臺管理 -->
+      <section *ngIf="activeSection() === 'backend'" class="guide-section">
+        <h2><i class="fas fa-cog"></i> 後臺管理</h2>
+        <p class="section-desc">依角色權限提供的後臺管理功能</p>
+        <ng-container *ngFor="let key of backendPages">
+          <div class="page-card">
+            <div class="page-header" (click)="togglePage(key)">
+              <div class="page-title">
+                <i [class]="'fas ' + pageGuides[key].icon"></i>
+                <h3>{{ pageGuides[key].name }}</h3>
+                <span class="page-path">{{ pageGuides[key].path }}</span>
+              </div>
+              <div class="page-meta">
+                <span class="role-tag">{{ pageGuides[key].roles }}</span>
+                <i [class]="'fas ' + (isExpanded(key) ? 'fa-chevron-up' : 'fa-chevron-down')"></i>
+              </div>
+            </div>
+            <div *ngIf="isExpanded(key)" class="page-content">
+              <p class="page-desc">{{ pageGuides[key].description }}</p>
+              <div class="feature-list">
+                <div *ngFor="let feature of pageGuides[key].features" class="feature-item">
+                  <span class="feature-title">{{ feature.title }}</span>
+                  <span class="feature-desc">{{ feature.desc }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </section>
+
+      <!-- 版本更新 -->
+      <section *ngIf="activeSection() === 'changelog'" class="guide-section">
+        <h2><i class="fas fa-history"></i> 版本更新記錄</h2>
+        <p class="section-desc">平台功能更新與修正歷史</p>
+        <div class="changelog-timeline">
+          <div *ngFor="let release of changelog" class="changelog-item">
+            <div class="changelog-header">
+              <span class="changelog-version">{{ release.version }}</span>
+              <h3 class="changelog-title">{{ release.title }}</h3>
+            </div>
+            <ul class="changelog-list">
+              <li *ngFor="let change of release.changes">
+                <span class="change-type" [style.backgroundColor]="getTypeColor(change.type)">
+                  {{ getTypeLabel(change.type) }}
+                </span>
+                <span class="change-text">{{ change.text }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

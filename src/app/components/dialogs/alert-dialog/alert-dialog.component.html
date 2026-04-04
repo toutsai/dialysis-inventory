@@ -1,0 +1,17 @@
+@if (isVisible) {
+  <div class="dialog-backdrop">
+    <dialog [open]="true" class="alert-dialog">
+      @if (title) {
+        <header class="dialog-header">
+          <h3>{{ title }}</h3>
+        </header>
+      }
+      <main class="dialog-content">
+        <pre>{{ message }}</pre>
+      </main>
+      <footer class="dialog-footer">
+        <button class="btn-primary" (click)="handleConfirm()">確定</button>
+      </footer>
+    </dialog>
+  </div>
+}

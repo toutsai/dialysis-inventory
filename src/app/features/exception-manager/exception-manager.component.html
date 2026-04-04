@@ -1,0 +1,116 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-toolbar">
+      <div class="toolbar-left">
+        <h1 class="page-title">調班管理(單次或區間調整班別)</h1>
+        <button
+          class="btn btn-primary desktop-only"
+          (click)="openCreateDialog()"
+          [disabled]="isPageLocked()"
+        >
+          <i class="fas fa-plus-circle"></i> 新增調班申請
+        </button>
+      </div>
+    </div>
+    <p class="page-description">
+      處理單次或區間調整，如「臨時調班」、「區間暫停」或「臨時加洗」等。建立的申請將會自動更新對應日期的排班表。
+    </p>
+  </div>
+
+  <main class="page-main-content">
+    <div class="exceptions-list-container">
+      <div class="custom-calendar-header">
+        <div class="date-navigator">
+          <button (click)="handlePrev()">&lt;</button>
+          <span class="calendar-title-text is-clickable" (click)="openMonthPicker()">{{
+            calendarTitle()
+          }}</span>
+          <button (click)="handleNext()">&gt;</button>
+        </div>
+        <div class="view-actions">
+          <button (click)="handleToday()">今天</button>
+          <button (click)="handleViewChange('dayGridMonth')">月</button>
+          <button (click)="handleViewChange('dayGridWeek')">週</button>
+        </div>
+      </div>
+
+      <div *ngIf="isLoading()" class="loading-state">正在載入調班申請資料...</div>
+      <div *ngIf="!isLoading()" class="calendar-wrapper">
+        <full-calendar #fullCalendar [options]="calendarOptions()"></full-calendar>
+        <div *ngIf="!isLoading() && exceptions().length === 0" class="empty-state">
+          <i class="fas fa-check-circle"></i>
+          <p>目前沒有任何待處理或已生效的調班。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <button class="fab mobile-only" (click)="openCreateDialog()" [disabled]="isPageLocked()">
+    <i class="fas fa-plus"></i>
+  </button>
+
+  <app-exception-create-dialog
+    [isVisible]="isCreateDialogVisible()"
+    [allPatients]="allPatients()"
+    [isPageLocked]="isPageLocked()"
+    [initialData]="exceptionToReEdit()"
+    (close)="closeCreateDialog()"
+    (submit)="handleCreateException($event)"
+    (delete)="handleDeleteFromChild($event)"
+  ></app-exception-create-dialog>
+
+  <app-confirm-dialog
+    [isVisible]="isActionDialogVisible()"
+    [title]="actionDialogTitle()"
+    [message]="actionDialogMessage()"
+    [hasCustomFooter]="true"
+    (cancel)="closeActionDialog()"
+  >
+    <div footer class="dialog-footer-custom">
+      <button class="btn btn-secondary" (click)="closeActionDialog()">關閉</button>
+      <div class="footer-actions">
+        <button
+          *ngIf="currentActionData() && isCancellable(currentActionData())"
+          class="btn btn-primary"
+          (click)="handleEdit()"
+          [disabled]="isPageLocked()"
+        >
+          修改
+        </button>
+        <button
+          *ngIf="currentActionData() && isCancellable(currentActionData())"
+          class="btn btn-danger"
+          (click)="handleDelete()"
+          [disabled]="isPageLocked()"
+        >
+          撤銷此申請
+        </button>
+      </div>
+    </div>
+  </app-confirm-dialog>
+
+  <app-alert-dialog
+    [isVisible]="isAlertDialogVisible()"
+    [title]="alertDialogTitle()"
+    [message]="alertDialogMessage()"
+    (confirm)="closeAlertDialog()"
+  ></app-alert-dialog>
+
+  <!-- 合併確認 Dialog -->
+  <app-confirm-dialog
+    [isVisible]="isMergeDialogVisible()"
+    title="發現相同調班申請"
+    [message]="mergeDialogMessage()"
+    confirmText="整併"
+    cancelText="取消"
+    (confirm)="handleMergeConfirm()"
+    (cancel)="handleMergeCancel()"
+  ></app-confirm-dialog>
+
+  <app-month-year-picker
+    [isVisible]="isMonthPickerVisible()"
+    [initialDate]="currentCalendarDate()"
+    (close)="isMonthPickerVisible.set(false)"
+    (dateSelected)="handleDateSelected($event)"
+  ></app-month-year-picker>
+</div>

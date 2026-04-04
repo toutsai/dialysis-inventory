@@ -1,0 +1,97 @@
+# 檔案路徑: .github/workflows/deploy-to-main.yml (最終修正版)
+
+name: Deploy to Production Environment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy_to_prod:
+    runs-on: ubuntu-latest
+    env:
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY_PROD }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN_PROD }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET_PROD }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_PROD }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID_PROD }}
+      FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }}
+      FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+                  # ✨ 核心修正：將部署過程分為多個步驟，並添加重試機制
+      - name: Build Vue Application
+        run: npm run build
+
+      - name: Deploy Firebase Hosting and Rules
+        run: |
+          firebase deploy --project ${{ env.FIREBASE_PROJECT_ID }} --non-interactive --only hosting,firestore:rules
+
+      # 分批部署 Firebase Functions 以避免 timeout
+      - name: Deploy Firebase Functions (Batch 1)
+        run: |
+          for i in {1..3}; do
+            firebase deploy --project ${{ env.FIREBASE_PROJECT_ID }} --non-interactive --only "functions:checkExpiredMemos,functions:customLogin,functions:ensureFutureSchedules" && break || sleep 10
+          done
+
+      - name: Deploy Firebase Functions (Batch 2)
+        run: |
+          for i in {1..3}; do
+            firebase deploy --project ${{ env.FIREBASE_PROJECT_ID }} --non-interactive --only "functions:handleNewExceptionRequest,functions:initializeFutureSchedules,functions:onExceptionDeleted" && break || sleep 10
+          done
+
+      - name: Deploy Firebase Functions (Batch 3)
+        run: |
+          for i in {1..3}; do
+            firebase deploy --project ${{ env.FIREBASE_PROJECT_ID }} --non-interactive --only "functions:processExceptionTask,functions:processLabReport,functions:reapplyAllActiveExceptions,functions:syncMasterScheduleToFuture" && break || sleep 10
+          done
+
+      # 分批部署 Firebase Functions 以避免 timeout
+      - name: Deploy Firebase Functions (Batch 1)
+        run: |
+          firebase deploy --project ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:checkExpiredMemos,functions:customLogin,functions:ensureFutureSchedules"
+
+      - name: Deploy Firebase Functions (Batch 2)
+        run: |
+          firebase deploy --project ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:handleNewExceptionRequest,functions:initializeFutureSchedules,functions:onExceptionDeleted"
+
+      - name: Deploy Firebase Functions (Batch 3)
+        run: |
+          firebase deploy --project ${{ secrets.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:processExceptionTask,functions:processLabReport,functions:reapplyAllActiveExceptions,functions:syncMasterScheduleToFuture"
+
+      # 分批部署 Firebase Functions 以避免 timeout
+      - name: Deploy Firebase Functions (Batch 1)
+        run: |
+          firebase deploy --project ${{ env.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:checkExpiredMemos,functions:customLogin,functions:ensureFutureSchedules"
+
+      - name: Deploy Firebase Functions (Batch 2)
+        run: |
+          firebase deploy --project ${{ env.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:handleNewExceptionRequest,functions:initializeFutureSchedules,functions:onExceptionDeleted"
+
+      - name: Deploy Firebase Functions (Batch 3)
+        run: |
+          firebase deploy --project ${{ env.VITE_FIREBASE_PROJECT_ID_PROD }} --non-interactive --only "functions:processExceptionTask,functions:processLabReport,functions:reapplyAllActiveExceptions,functions:syncMasterScheduleToFuture"

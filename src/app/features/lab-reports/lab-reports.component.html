@@ -1,0 +1,357 @@
+<div class="page-container">
+  <header class="page-header">
+    <button *ngIf="showBackButton()" (click)="goBack()" class="back-button">返回查房名單</button>
+    <div class="header-main-content">
+      <h1>檢驗報告管理</h1>
+      <p class="page-description">
+        請從HIS報表產生器>護理>個管-CKD>0240洗腎科檢驗結果病患明細-月報下載原始資料。。
+      </p>
+    </div>
+  </header>
+
+  <div class="tabs-navigation">
+    <button [ngClass]="{ active: activeTab() === 'query' }" (click)="setActiveTab('query')">
+      報告查詢
+    </button>
+    <button [ngClass]="{ active: activeTab() === 'alert' }" (click)="setActiveTab('alert')">
+      警示報告
+    </button>
+    <button [ngClass]="{ active: activeTab() === 'upload' }" (click)="setActiveTab('upload')">
+      資料上傳
+    </button>
+  </div>
+
+  <main class="page-main-content">
+    <!-- (A) 報告查詢頁籤 -->
+    <div [style.display]="activeTab() === 'query' ? 'flex' : 'none'" class="tab-panel query-panel">
+      <button class="search-toggle-btn" (click)="isSearchVisible.set(!isSearchVisible())">
+        {{ isSearchVisible() ? '收合搜尋條件' : '展開搜尋條件' }}
+        <span [ngClass]="['toggle-icon', isSearchVisible() ? '' : 'is-toggled']">&#9660;</span>
+      </button>
+      <div [style.display]="isSearchVisible() ? 'flex' : 'none'" class="search-controls">
+        <div class="search-field">
+          <label for="search-type">查詢模式</label>
+          <select id="search-type" [ngModel]="searchType()" (ngModelChange)="onSearchTypeChange($event)">
+            <option value="group">依群組查詢</option>
+            <option value="individual">依個人查詢</option>
+          </select>
+        </div>
+        <div *ngIf="searchType() === 'group'" class="filter-wrapper">
+          <div class="group-filters">
+            <div class="search-field">
+              <label for="group-freq">頻率</label>
+              <select id="group-freq" [ngModel]="groupFreq()" (ngModelChange)="groupFreq.set($event)">
+                <option value="一三五">一三五</option>
+                <option value="二四六">二四六</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label for="group-shift">班別</label>
+              <select
+                id="group-shift"
+                [ngModel]="groupShift()"
+                (ngModelChange)="groupShift.set($event)"
+                [disabled]="groupFreq() === 'other'"
+              >
+                <option value="early">早班</option>
+                <option value="noon">午班</option>
+                <option value="late">晚班</option>
+              </select>
+            </div>
+            <div class="search-field">
+              <label for="group-month">月份</label>
+              <input type="month" id="group-month" [ngModel]="groupMonth()" (ngModelChange)="groupMonth.set($event)" />
+            </div>
+          </div>
+          <button (click)="handleSearch()" [disabled]="isLoadingReports()" class="search-btn">
+            {{ isLoadingReports() ? '查詢中...' : '查詢報告' }}
+          </button>
+          <button
+            (click)="exportGroupReportToExcel()"
+            [disabled]="isLoadingReports() || reportData().length === 0"
+            class="export-btn"
+          >
+            匯出 Excel
+          </button>
+        </div>
+        <div *ngIf="searchType() === 'individual'" class="filter-wrapper">
+          <div class="individual-filters">
+            <div class="search-field">
+              <label>病人 (姓名/病歷號):</label>
+              <input
+                type="text"
+                [ngModel]="individualSearchQuery()"
+                (ngModelChange)="individualSearchQuery.set($event)"
+                (keyup.enter)="handleSearch()"
+                placeholder="輸入後按 Enter..."
+              />
+            </div>
+            <div class="year-selector">
+              <button (click)="changeYear(-1)">&lt; 上一年</button>
+              <span>{{ individualSearchYear() }} 年</span>
+              <button (click)="changeYear(1)">下一年 &gt;</button>
+            </div>
+          </div>
+          <button (click)="handleSearch()" [disabled]="isLoadingReports()" class="search-btn">
+            {{ isLoadingReports() ? '查詢中...' : '查詢報告' }}
+          </button>
+        </div>
+      </div>
+      <div class="report-display">
+        <div *ngIf="isLoadingReports()" class="loading-state">正在查詢報告...</div>
+        <div *ngIf="!isLoadingReports() && !searchPerformed()" class="placeholder-text">請選擇條件並點擊查詢。</div>
+        <div
+          *ngIf="!isLoadingReports() && searchPerformed() &&
+            ((searchType() === 'group' && reportData().length === 0) ||
+             (searchType() === 'individual' && reportColumns().length === 0))"
+          class="empty-state"
+        >
+          查無符合條件的報告。
+        </div>
+        <div
+          *ngIf="!isLoadingReports() && searchPerformed() &&
+            !((searchType() === 'group' && reportData().length === 0) ||
+              (searchType() === 'individual' && reportColumns().length === 0))"
+          class="table-container"
+        >
+          <!-- 群組查詢表格 -->
+          <table *ngIf="searchType() === 'group'">
+            <thead>
+              <tr>
+                <th class="sticky-col col-freq">頻率</th>
+                <th class="sticky-col col-shift">班別</th>
+                <th class="sticky-col col-bed">床號</th>
+                <th class="sticky-col col-name">姓名</th>
+                <th *ngFor="let itemKey of prioritizedLabItems">
+                  {{ labItemDisplayNames[itemKey] || itemKey }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of reportData()">
+                <td class="sticky-col col-freq">{{ row.freq || '-' }}</td>
+                <td class="sticky-col col-shift">{{ formatShift(row.shiftIndex) }}</td>
+                <td class="sticky-col col-bed">{{ row.bedNum || '-' }}</td>
+                <td class="sticky-col col-name">{{ row.patientName }}</td>
+                <td *ngFor="let itemKey of prioritizedLabItems">
+                  {{ row.labData[itemKey] !== undefined ? row.labData[itemKey] : '-' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- 個人查詢表格 -->
+          <table *ngIf="searchType() === 'individual'">
+            <thead>
+              <tr>
+                <th class="sticky-col">月份</th>
+                <th *ngFor="let itemKey of prioritizedLabItems">
+                  {{ labItemDisplayNames[itemKey] || itemKey }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let month of reportColumns()">
+                <td class="sticky-col">{{ month }}</td>
+                <td *ngFor="let itemKey of prioritizedLabItems">
+                  {{ reportData()[itemKey]?.[month] || '-' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- (B) 警示報告頁籤 -->
+    <div [style.display]="activeTab() === 'alert' ? 'flex' : 'none'" class="tab-panel alert-panel">
+      <div class="alert-controls">
+        <button (click)="changeAlertMonth(-1)">&lt; 前三個月</button>
+        <span class="month-range-display"
+          >{{ alertMonthRange().start }} ~ {{ alertMonthRange().end }}</span
+        >
+        <button (click)="changeAlertMonth(1)">後三個月 &gt;</button>
+        <button (click)="exportAlertToExcel()" class="export-btn" [disabled]="groupedAlerts().length === 0">
+          匯出 Excel
+        </button>
+        <button
+          (click)="saveAlertAnalyses()"
+          class="save-btn"
+          [disabled]="isLoadingAlerts() || groupedAlerts().length === 0"
+        >
+          儲存分析
+        </button>
+      </div>
+
+      <div class="alert-report-display">
+        <div *ngIf="isLoadingAlerts()" class="loading-state">
+          <div class="loading-spinner"></div>
+          正在分析 {{ alertMonthRange().start }} 至 {{ alertMonthRange().end }} 的數據...
+        </div>
+        <div *ngIf="!isLoadingAlerts() && groupedAlerts().length === 0" class="empty-state">
+          太棒了！此區間內沒有病人符合連續不合格的警示條件。
+        </div>
+        <div *ngIf="!isLoadingAlerts() && groupedAlerts().length > 0" class="grouped-tables-container">
+          <div *ngFor="let group of groupedAlerts()" class="alert-group">
+            <h3 class="group-title">
+              {{ labItemDisplayNames[group.key] || group.key }} - 不合格名單
+            </h3>
+            <table class="alert-table">
+              <thead>
+                <tr>
+                  <th>頻率</th>
+                  <th>班別</th>
+                  <th>床號</th>
+                  <th>姓名</th>
+                  <th>累積報告</th>
+                  <th class="col-analysis">病因分析</th>
+                  <th class="col-suggestion">建議處置</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of sortAlertItems(group.items)">
+                  <td>{{ item.patient.freq || 'N/A' }}</td>
+                  <td>{{ item.patient.defaultShift || 'N/A' }}</td>
+                  <td>{{ item.patient.defaultBed || 'N/A' }}</td>
+                  <td class="clickable" (click)="openAlertDetailModal(item, group.key)">
+                    {{ item.patient.name }}
+                  </td>
+                  <td class="clickable" (click)="openAlertDetailModal(item, group.key)">
+                    <div [innerHTML]="formatAbnormalityReason(item.abnormality)"></div>
+                  </td>
+                  <td>
+                    <div class="analysis-cell-content">{{ item.analysisText }}</div>
+                  </td>
+                  <td>
+                    <div class="analysis-cell-content">{{ item.suggestionText }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- (C) 資料上傳頁籤 -->
+    <div [style.display]="activeTab() === 'upload' ? 'grid' : 'none'" class="tab-panel upload-panel expanded">
+      <!-- 左側：上傳功能 -->
+      <div class="upload-core-panel">
+        <h4>批次上傳報告</h4>
+        <div
+          class="upload-drop-zone"
+          [ngClass]="{ 'is-dragover': isDragOver() }"
+          (dragover)="$event.preventDefault(); isDragOver.set(true)"
+          (dragleave)="$event.preventDefault(); isDragOver.set(false)"
+          (drop)="$event.preventDefault(); handleFileDrop($event)"
+        >
+          <div class="upload-icon">&#128228;</div>
+          <h3 *ngIf="!selectedFile()">拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
+          <h3 *ngIf="selectedFile()">
+            已選擇檔案：<strong>{{ selectedFile()!.name }}</strong>
+          </h3>
+          <p class="upload-hint">支援 .xlsx, .xls 格式</p>
+          <input
+            id="file-input"
+            type="file"
+            (change)="handleFileSelect($event)"
+            accept=".xlsx, .xls"
+            [disabled]="isUploading()"
+          />
+          <label for="file-input" class="file-input-label">{{
+            selectedFile() ? '重新選擇檔案' : '選擇檔案'
+          }}</label>
+        </div>
+        <button
+          class="upload-btn-main"
+          (click)="handleUpload()"
+          [disabled]="!selectedFile() || isUploading()"
+        >
+          {{ isUploading() ? '處理中...' : '開始上傳' }}
+        </button>
+        <!-- 上傳結果通知 -->
+        <div
+          *ngIf="uploadResult()"
+          class="upload-result-toast"
+          [ngClass]="uploadResult().errorCount > 0 ? 'has-error' : 'is-success'"
+        >
+          {{ uploadResult().message }}
+        </div>
+      </div>
+
+      <!-- 右側：手動補登功能 -->
+      <div class="manual-entry-panel">
+        <h4>手動查詢與補登缺漏報告</h4>
+        <p class="panel-description">
+          選擇群組與月份，系統將直接從資料庫比對尚未有任何報告的病患名單。
+        </p>
+        <div class="manual-controls">
+          <select [ngModel]="manualEntryFreq()" (ngModelChange)="manualEntryFreq.set($event)">
+            <option value="一三五">一三五</option>
+            <option value="二四六">二四六</option>
+            <option value="other">其他</option>
+          </select>
+          <select [ngModel]="manualEntryShift()" (ngModelChange)="manualEntryShift.set($event)" [disabled]="manualEntryFreq() === 'other'">
+            <option value="early">早班</option>
+            <option value="noon">午班</option>
+            <option value="late">晚班</option>
+          </select>
+          <input type="month" [ngModel]="manualEntryMonth()" (ngModelChange)="manualEntryMonth.set($event)" />
+          <button (click)="findMissingPatients()" [disabled]="isFindingMissing()">
+            {{ isFindingMissing() ? '查詢中...' : '查詢缺漏' }}
+          </button>
+        </div>
+        <div class="missing-patients-list">
+          <div *ngIf="isFindingMissing()" class="placeholder-item">正在從資料庫比對缺漏名單...</div>
+          <div
+            *ngIf="!isFindingMissing() && searchedForMissing() && missingPatients().length === 0"
+            class="placeholder-item"
+          >
+            太棒了！此群組在此月份沒有缺漏報告的病人。
+          </div>
+          <div *ngIf="!isFindingMissing() && missingPatients().length > 0">
+            <div class="manual-entry-global-date">
+              <label for="manual-report-date">所有補登報告的統一報告日：</label>
+              <input type="date" id="manual-report-date" [ngModel]="manualReportDate()" (ngModelChange)="manualReportDate.set($event)" />
+            </div>
+            <div
+              *ngFor="let patient of missingPatients()"
+              class="missing-patient-item"
+            >
+              <span class="patient-info"
+                >{{ patient.name }} ({{ patient.medicalRecordNumber }})</span
+              >
+              <div class="input-grid">
+                <div *ngFor="let item of manualEntryItems" class="input-field">
+                  <label>{{ item.label }}</label>
+                  <input type="text" [(ngModel)]="patient.labData[item.key]" />
+                </div>
+              </div>
+            </div>
+            <button
+              (click)="generateAndUploadManualData()"
+              class="save-manual-btn"
+              [disabled]="isUploading()"
+            >
+              生成 Excel 並上傳補登資料
+            </button>
+          </div>
+          <div *ngIf="!isFindingMissing() && !searchedForMissing() && missingPatients().length === 0" class="placeholder-item">
+            請選擇群組和月份，然後點擊「查詢缺漏」。
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Alert Detail Modal -->
+  <app-lab-alert-detail-modal
+    [isVisible]="isAlertDetailModalVisible()"
+    [patient]="selectedAlertItem()?.patient"
+    [abnormalityKey]="selectedAlertItem()?.key || ''"
+    [initialAnalysis]="selectedAlertItem()?.analysisText || ''"
+    [initialSuggestion]="selectedAlertItem()?.suggestionText || ''"
+    (close)="isAlertDetailModalVisible.set(false)"
+    (confirm)="handleAlertUpdate($event)"
+  ></app-lab-alert-detail-modal>
+</div>

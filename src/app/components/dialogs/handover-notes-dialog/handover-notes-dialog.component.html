@@ -1,0 +1,25 @@
+@if (isVisible) {
+  <div class="dialog-overlay">
+    <div class="dialog-container">
+      <header class="dialog-header">
+        <h2>組長交班事項 ({{ targetDate }})</h2>
+        <button (click)="close()" class="close-btn">&times;</button>
+      </header>
+      <main class="dialog-body">
+        <textarea
+          [(ngModel)]="editableNotes"
+          class="notes-textarea"
+          rows="15"
+          placeholder="請輸入交班事項..."
+        ></textarea>
+      </main>
+      <footer class="dialog-footer">
+        <span class="save-status">{{ saveStatus }}</span>
+        <button (click)="handleSave()" class="btn btn-primary" [disabled]="isSaving">
+          {{ isSaving ? '儲存中...' : '儲存並同步' }}
+        </button>
+        <button (click)="close()" class="btn btn-secondary">取消</button>
+      </footer>
+    </div>
+  </div>
+}

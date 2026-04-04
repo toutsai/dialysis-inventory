@@ -1,0 +1,78 @@
+/* 此處樣式與您提供的 DailyLogView.vue 中推斷的樣式一致，無需修改 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+.dialog-container {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+}
+.dialog-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.dialog-body {
+  padding: 1.5rem;
+}
+.notes-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  resize: vertical;
+}
+.dialog-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+}
+.save-status {
+  margin-right: auto;
+  font-style: italic;
+  color: #6c757d;
+}
+.btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

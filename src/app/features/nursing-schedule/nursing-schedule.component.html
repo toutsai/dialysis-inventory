@@ -1,0 +1,691 @@
+<div class="nursing-schedule-container">
+  <header class="page-header">
+    <div class="header-main-content">
+      <h1 class="page-title">護理班表與職責</h1>
+      <p class="page-description">原始Excel班表請刪除第2、3、5列後，再執行上傳功能。</p>
+    </div>
+  </header>
+
+  <!-- 頁籤導覽列 -->
+  <nav class="tabs-nav">
+    <button [class.active]="activeTab() === 'master'" (click)="onTabChange('master')">
+      當月總班表
+    </button>
+    <button [class.active]="activeTab() === 'weekly'" (click)="onTabChange('weekly')">
+      當月週班表
+    </button>
+    <button [class.active]="activeTab() === 'responsibilities'" (click)="onTabChange('responsibilities')">
+      護理當班分組工作職責
+    </button>
+  </nav>
+
+  <!-- 頁籤內容區域 -->
+  <main class="tab-content">
+    <!-- 1. 當月總班表 -->
+    <div *ngIf="activeTab() === 'master'" class="tab-pane master-tab-layout">
+      <!-- 合併的控制區域 -->
+      <section class="controls-section">
+        <div class="controls-left">
+          <label for="schedule-month">月份：</label>
+          <input
+            type="month"
+            id="schedule-month"
+            [(ngModel)]="selectedMonth"
+            (change)="onMonthChange()"
+          />
+          <button (click)="loadMonthlySchedule()" [disabled]="isLoadingSchedule()" class="btn-primary">
+            {{ isLoadingSchedule() ? '載入中...' : '重新載入' }}
+          </button>
+        </div>
+
+        <!-- 權限控制：只有 admin 才看得到上傳區塊 -->
+        <div class="controls-right" *ngIf="auth.isAdmin()">
+          <label class="file-upload-label">
+            <input
+              type="file"
+              (change)="handleFileUpload($event)"
+              accept=".xlsx, .xls"
+              [disabled]="isUploading()"
+              class="file-input-hidden"
+            />
+            <span class="btn-secondary">
+              <i class="fas fa-file-excel"></i>
+              {{ selectedFile ? selectedFile.name : '選擇檔案' }}
+            </span>
+          </label>
+          <button
+            (click)="processAndUpload()"
+            [disabled]="!selectedFile || isUploading()"
+            class="btn-primary"
+          >
+            {{ isUploading() ? '上傳中...' : '上傳班表' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- 上傳狀態訊息 -->
+      <div
+        *ngIf="uploadStatus()"
+        [ngClass]="['status-message', uploadStatus().includes('成功') ? 'success' : 'error']"
+      >
+        {{ uploadStatus() }}
+      </div>
+
+      <!-- 班表顯示區域 -->
+      <section class="schedule-display-section">
+        <div *ngIf="isLoadingSchedule()" class="loading-schedule">
+          <div class="spinner"></div>
+          <span>正在載入班表資料...</span>
+        </div>
+
+        <div *ngIf="!isLoadingSchedule() && (!monthlySchedule || !monthlySchedule.scheduleByNurse)" class="no-schedule">
+          <i class="fas fa-calendar-times"></i>
+          <p>本月尚無班表資料</p>
+          <p class="hint" *ngIf="auth.isAdmin()">請點擊右上方「選擇檔案」上傳 Excel 班表</p>
+        </div>
+
+        <div *ngIf="!isLoadingSchedule() && monthlySchedule && monthlySchedule.scheduleByNurse" class="schedule-table-wrapper">
+          <h3>{{ monthlySchedule.title || (selectedMonth + ' 護理班表') }}</h3>
+
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th class="nurse-name-col">護理師</th>
+                <th
+                  *ngFor="let dayInfo of monthDays"
+                  [ngClass]="['date-col', dayInfo.isWeekend ? 'weekend' : '']"
+                >
+                  <div class="date-num">{{ dayInfo.day }}</div>
+                  <div class="weekday">{{ dayInfo.weekday }}</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody *ngIf="sortedSchedule && monthDays && monthDays.length > 0">
+              <tr *ngFor="let entry of objectEntries(sortedSchedule)">
+                <td class="nurse-name">
+                  {{ entry[1].nurseName }}
+                  <span *ngIf="showUsername && entry[1].nurseUsername" class="nurse-username">
+                    ({{ entry[1].nurseUsername }})
+                  </span>
+                </td>
+                <td
+                  *ngFor="let dayInfo of monthDays; let i = index"
+                  [ngClass]="['shift-cell', dayInfo.isWeekend ? 'weekend' : '']"
+                >
+                  <span
+                    *ngIf="entry[1].shifts && entry[1].shifts[i]"
+                    [class]="getShiftClass(entry[1].shifts[i])"
+                  >
+                    {{ entry[1].shifts[i] }}
+                  </span>
+                  <span *ngIf="!(entry[1].shifts && entry[1].shifts[i])" class="empty-cell">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- 2. 當月週班表 -->
+    <div *ngIf="activeTab() === 'weekly'" class="tab-pane weekly-tab-layout">
+      <!-- 控制按鈕 -->
+      <section class="controls-section">
+        <div class="controls-left">
+          <label for="schedule-month-weekly">月份：</label>
+          <input
+            type="month"
+            id="schedule-month-weekly"
+            [(ngModel)]="selectedMonth"
+            (change)="onMonthChange()"
+          />
+        </div>
+
+        <div class="controls-center">
+          <div class="shift-filter-group">
+            <button
+              [ngClass]="['filter-btn', shiftFilter() === 'all' ? 'active' : '']"
+              (click)="shiftFilter.set('all')"
+            >
+              全部
+            </button>
+            <button
+              [ngClass]="['filter-btn', shiftFilter() === 'day' ? 'active' : '']"
+              (click)="shiftFilter.set('day')"
+            >
+              只看白班
+            </button>
+            <button
+              [ngClass]="['filter-btn', shiftFilter() === 'night' ? 'active' : '']"
+              (click)="shiftFilter.set('night')"
+            >
+              只看夜班
+            </button>
+          </div>
+        </div>
+
+        <div class="controls-right">
+          <!-- 匯出按鈕 -->
+          <button
+            (click)="exportWeeklyScheduleToExcel()"
+            [disabled]="!monthlySchedule || activeWeekTab() === 0"
+            class="btn-success"
+            title="將目前顯示的這一週班表匯出為 Excel 檔案"
+          >
+            <i class="fas fa-file-excel"></i> 匯出本週 Excel
+          </button>
+
+          <!-- 權限控制：將所有編輯相關的按鈕都包在 admin 判斷中 -->
+          <ng-container *ngIf="auth.isAdmin()">
+            <!-- 班別編輯按鈕 -->
+            <button
+              *ngIf="!isShiftEditMode() && !isGroupEditMode()"
+              (click)="enterShiftEditMode()"
+              class="btn-edit"
+            >
+              編輯班別
+            </button>
+            <ng-container *ngIf="isShiftEditMode()">
+              <button (click)="saveShiftChanges()" [disabled]="isUploading()" class="btn-primary">
+                {{ isUploading() ? '儲存中...' : '儲存班別' }}
+              </button>
+              <button (click)="cancelShiftEditMode()" class="btn-secondary">取消</button>
+            </ng-container>
+
+            <!-- 組別配置按鈕 -->
+            <button
+              *ngIf="!isGroupEditMode() && !isShiftEditMode()"
+              (click)="showGroupConfigDialog.set(true)"
+              class="btn-config"
+              title="設定護理師組別分配規則"
+            >
+              <i class="fas fa-cog"></i> 組別配置
+            </button>
+
+            <!-- 分組編輯按鈕 -->
+            <button
+              *ngIf="!isGroupEditMode() && !isShiftEditMode()"
+              (click)="enterGroupEditMode()"
+              class="btn-primary"
+            >
+              編輯組別
+            </button>
+
+            <!-- 編輯模式中的按鈕群組 -->
+            <ng-container *ngIf="isGroupEditMode()">
+              <ng-container *ngIf="activeWeekTab() > 0">
+                <button
+                  (click)="saveCurrentWeek()"
+                  [disabled]="isUploading()"
+                  class="btn-success"
+                  title="只儲存本週的分組設定"
+                >
+                  {{ isUploading() ? '儲存中...' : '儲存第' + activeWeekTab() + '週' }}
+                </button>
+                <button
+                  (click)="redistributeRemainingWeeks()"
+                  class="btn-warning"
+                  title="重新分配未確認週次的組別（若無已確認週次則重新產生整月）"
+                >
+                  重新分配剩餘週次
+                </button>
+              </ng-container>
+
+              <button (click)="saveGroupAssignments()" [disabled]="isUploading()" class="btn-primary">
+                {{ isUploading() ? '儲存中...' : '儲存整月分組' }}
+              </button>
+              <button (click)="cancelGroupEditMode()" class="btn-secondary">取消編輯</button>
+            </ng-container>
+          </ng-container>
+        </div>
+      </section>
+
+      <!-- 上傳狀態訊息 -->
+      <div
+        *ngIf="uploadStatus()"
+        [ngClass]="['status-message', uploadStatus().includes('成功') ? 'success' : 'error']"
+      >
+        {{ uploadStatus() }}
+      </div>
+
+      <!-- 週班表顯示區域 -->
+      <div *ngIf="isLoadingSchedule()" class="loading-schedule">
+        <div class="spinner"></div>
+        <span>正在載入班表資料...</span>
+      </div>
+      <div *ngIf="!isLoadingSchedule() && !monthlySchedule" class="no-schedule">
+        <i class="fas fa-calendar-times"></i>
+        <p>本月尚無班表資料，請至「當月總班表」頁籤上傳</p>
+      </div>
+
+      <!-- 統一的頁籤化佈局 (只要有資料就顯示) -->
+      <div *ngIf="!isLoadingSchedule() && monthlySchedule" class="weekly-content-wrapper">
+        <!-- 週次頁籤導覽列 (常駐) -->
+        <nav class="weekly-tabs-nav">
+          <button [class.active]="activeWeekTab() === 0" (click)="activeWeekTab.set(0)">
+            分組統計
+          </button>
+          <button
+            *ngFor="let week of weeklyData; let i = index; trackBy: trackByWeekNumber"
+            [ngClass]="{
+              'active': activeWeekTab() === i + 1,
+              'confirmed': getWeekConfirmed(i),
+              'unscheduled': !getWeekConfirmed(i)
+            }"
+            (click)="activeWeekTab.set(i + 1)"
+          >
+            第 {{ week.weekNumber }} 週
+            <span
+              *ngIf="getWeekConfirmed(i)"
+              class="confirmed-badge"
+            >
+              &#10003;
+            </span>
+            <span *ngIf="!getWeekConfirmed(i)" class="unscheduled-badge"> 未安排 </span>
+          </button>
+        </nav>
+
+        <!-- 分組儀表板 (頁籤 0 被選中時顯示) -->
+        <section *ngIf="activeWeekTab() === 0" class="dashboard-section">
+          <h3 class="dashboard-title">護理師分組統計</h3>
+          <div class="dashboard-table-wrapper">
+            <table class="dashboard-table">
+              <thead>
+                <tr>
+                  <th
+                    *ngFor="let header of groupCountsDashboard.header"
+                    [ngClass]="{
+                      'day-shift-header': header.startsWith('白'),
+                      'night-shift-header': header.startsWith('晚'),
+                      'standby-75-header': header === '預備75'
+                    }"
+                  >
+                    {{ header }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody *ngIf="groupCountsDashboard">
+                <tr *ngFor="let nurse of groupCountsDashboard.nurses">
+                  <td>{{ nurse.name }}</td>
+                  <td
+                    *ngFor="let group of groupCountsDashboard.header.slice(1)"
+                    [ngClass]="{
+                      'day-shift-data': group.startsWith('白'),
+                      'night-shift-data': group.startsWith('晚'),
+                      'standby-75-data': group === '預備75'
+                    }"
+                  >
+                    {{ nurse.counts[group] || 0 }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 週班表內容 (根據頁籤切換顯示) -->
+        <div class="weekly-schedule-container">
+          <ng-container *ngFor="let weekData of weeklyData; let weekIndex = index; trackBy: trackByWeekNumber">
+            <div *ngIf="activeWeekTab() === weekIndex + 1" class="week-section">
+              <h4 class="week-title">
+                第 {{ weekData.weekNumber }} 週 ({{ weekData.startDate }} -
+                {{ weekData.endDate }})
+                <span
+                  *ngIf="tempScheduleWithGroups?.weekConfirmed?.['week' + (weekIndex + 1)]"
+                  class="week-confirmed-tag"
+                >
+                  已確認
+                </span>
+              </h4>
+              <div class="week-table-wrapper">
+                <table class="week-table">
+                  <thead>
+                    <tr>
+                      <th class="employee-id-col-weekly">員工編號</th>
+                      <th class="nurse-name-col-weekly">護理師</th>
+                      <th
+                        *ngFor="let dayInfo of weekData.days; let dayIdx = index"
+                        [ngClass]="{
+                          'weekend': dayInfo.isWeekend,
+                          'other-month-header': !dayInfo.isCurrentMonth
+                        }"
+                      >
+                        {{ dayInfo.displayText }} ({{ dayInfo.weekday }})
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody *ngIf="filteredSortedSchedule">
+                    <tr *ngFor="let nurseEntry of objectEntries(filteredSortedSchedule); trackBy: trackByNurseId">
+                      <td class="employee-id-weekly">{{ nurseEntry[1].nurseUsername || '-' }}</td>
+                      <td class="nurse-name-weekly">{{ nurseEntry[1].nurseName }}</td>
+                      <td
+                        *ngFor="let dayInfo of weekData.days; let dayIdx = index"
+                        [ngClass]="{
+                          'weekend': dayInfo.isWeekend,
+                          'other-month': !dayInfo.isCurrentMonth,
+                          'dimmed': shouldDimCell(nurseEntry[1], dayInfo),
+                          'is-past': dayInfo.isCurrentMonth && isDateInPast(dayInfo.date)
+                        }"
+                      >
+                        <!-- 當月顯示 -->
+                        <ng-container *ngIf="dayInfo.isCurrentMonth">
+                          <!-- 班別編輯模式 -->
+                          <ng-container *ngIf="isShiftEditMode()">
+                            <select
+                              [(ngModel)]="monthlySchedule.scheduleByNurse[nurseEntry[0]].shifts[dayInfo.dayIndex]"
+                              (ngModelChange)="markShiftUnsaved()"
+                              class="shift-select"
+                              [disabled]="isDateInPast(dayInfo.date)"
+                              [class.is-readonly]="isDateInPast(dayInfo.date)"
+                            >
+                              <option *ngFor="let option of shiftOptions" [value]="option">
+                                {{ option }}
+                              </option>
+                            </select>
+                          </ng-container>
+                          <!-- 一般顯示或分組編輯 -->
+                          <ng-container *ngIf="!isShiftEditMode()">
+                            <div
+                              *ngIf="nurseEntry[1].shifts && nurseEntry[1].shifts[dayInfo.dayIndex]"
+                              class="weekly-shift-cell"
+                            >
+                              <div class="shift-and-standby">
+                                <span [class]="getShiftClass(nurseEntry[1].shifts[dayInfo.dayIndex])">
+                                  {{ nurseEntry[1].shifts[dayInfo.dayIndex] }}
+                                </span>
+                                <span
+                                  *ngIf="isStandby75(nurseEntry[0], dayInfo.dayIndex)"
+                                  class="standby-75-marker"
+                                  [class.editable]="isGroupEditMode() && canBeStandby75(nurseEntry[0], dayInfo.dayIndex) && !isDateInPast(dayInfo.date)"
+                                  (click)="isGroupEditMode() && canBeStandby75(nurseEntry[0], dayInfo.dayIndex) && !isDateInPast(dayInfo.date) && toggleStandby75(nurseEntry[0], dayInfo.dayIndex)"
+                                  [title]="isGroupEditMode() && !isDateInPast(dayInfo.date) ? '點擊移除預備75班' : '預備第3個75班'"
+                                >
+                                  &#11088;
+                                </span>
+                                <button
+                                  *ngIf="!isStandby75(nurseEntry[0], dayInfo.dayIndex) && isGroupEditMode() && canBeStandby75(nurseEntry[0], dayInfo.dayIndex) && !isDateInPast(dayInfo.date)"
+                                  (click)="toggleStandby75(nurseEntry[0], dayInfo.dayIndex)"
+                                  class="add-standby-btn"
+                                  title="設為預備75班"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <!-- 分組編輯模式 -->
+                              <ng-container *ngIf="isGroupEditMode() && tempScheduleWithGroups">
+                                <!-- 未來日期：可編輯 -->
+                                <select
+                                  *ngIf="canAssignGroup(tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].shifts[dayInfo.dayIndex]) && !isDateInPast(dayInfo.date)"
+                                  [(ngModel)]="tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups[dayInfo.dayIndex]"
+                                  (change)="handleGroupChange(nurseEntry[0], dayInfo.dayIndex, $event)"
+                                  class="group-select"
+                                >
+                                  <option value="">-</option>
+                                  <option
+                                    *ngFor="let group of getAvailableGroups(tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].shifts[dayInfo.dayIndex], dayInfo.date, nurseEntry[0])"
+                                    [value]="group"
+                                  >
+                                    {{ group }} 組
+                                  </option>
+                                </select>
+                                <!-- 過去日期：唯讀顯示 -->
+                                <span
+                                  *ngIf="canAssignGroup(tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].shifts[dayInfo.dayIndex]) && isDateInPast(dayInfo.date) && tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups?.[dayInfo.dayIndex]"
+                                  class="group-badge-readonly"
+                                >
+                                  {{ tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups[dayInfo.dayIndex] }}
+                                  組
+                                </span>
+                                <span
+                                  *ngIf="tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups && tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups[dayInfo.dayIndex] && !canAssignGroup(tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].shifts[dayInfo.dayIndex])"
+                                  class="group-badge-fixed"
+                                >
+                                  {{ tempScheduleWithGroups.scheduleByNurse[nurseEntry[0]].groups[dayInfo.dayIndex] }}
+                                  組
+                                </span>
+                              </ng-container>
+                              <!-- 檢視模式的分組顯示 -->
+                              <ng-container *ngIf="!isGroupEditMode() || !tempScheduleWithGroups">
+                                <span
+                                  *ngIf="nurseEntry[1].groups && nurseEntry[1].groups[dayInfo.dayIndex]"
+                                  [ngClass]="['group-badge', getGroupClass(nurseEntry[1].groups[dayInfo.dayIndex])]"
+                                >
+                                  {{ nurseEntry[1].groups[dayInfo.dayIndex] }} 組
+                                </span>
+                              </ng-container>
+                            </div>
+                            <div *ngIf="!(nurseEntry[1].shifts && nurseEntry[1].shifts[dayInfo.dayIndex])" class="empty-cell">-</div>
+                          </ng-container>
+                        </ng-container>
+                        <!-- 非當月顯示（跨月班表） -->
+                        <ng-container *ngIf="!dayInfo.isCurrentMonth">
+                          <div
+                            class="other-month-cell"
+                            [ngClass]="{
+                              'adjacent-loading': adjacentMonthsLoading(),
+                              'adjacent-not-uploaded': getAdjacentMonthData(nurseEntry[0], dayInfo)?.notUploaded
+                            }"
+                          >
+                            <ng-container *ngIf="adjacentMonthsLoading()">
+                              <span class="loading-dot">...</span>
+                            </ng-container>
+                            <ng-container *ngIf="!adjacentMonthsLoading() && getAdjacentMonthData(nurseEntry[0], dayInfo)?.notUploaded">
+                              <span class="not-uploaded-text">未上傳</span>
+                            </ng-container>
+                            <ng-container *ngIf="!adjacentMonthsLoading() && !getAdjacentMonthData(nurseEntry[0], dayInfo)?.notUploaded">
+                              <div class="adjacent-shift-cell">
+                                <span class="adjacent-shift">{{ getAdjacentMonthData(nurseEntry[0], dayInfo)?.shift || '-' }}</span>
+                                <span
+                                  *ngIf="getAdjacentMonthData(nurseEntry[0], dayInfo)?.isStandby"
+                                  class="standby-75-marker adjacent"
+                                  title="預備75班"
+                                >
+                                  &#11088;
+                                </span>
+                                <span
+                                  *ngIf="getAdjacentMonthData(nurseEntry[0], dayInfo)?.group"
+                                  [ngClass]="['group-badge', 'adjacent', 'group-' + getAdjacentMonthData(nurseEntry[0], dayInfo)?.group]"
+                                >
+                                  {{ getAdjacentMonthData(nurseEntry[0], dayInfo)?.group }} 組
+                                </span>
+                              </div>
+                            </ng-container>
+                          </div>
+                        </ng-container>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 護理當班分組工作職責 -->
+    <div *ngIf="activeTab() === 'responsibilities'" class="tab-pane responsibilities-tab-layout">
+      <header class="pane-header">
+        <h2 class="table-title">洗腎中心當班分組工作職責</h2>
+        <div class="header-actions">
+          <span
+            *ngIf="lastModifiedInfo.date"
+            class="revision-date"
+            [title]="'最後修改者: ' + lastModifiedInfo.user"
+          >
+            {{ lastModifiedInfo.date }} 修改
+          </span>
+          <!-- 權限控制：只有 admin 才看得到儲存按鈕 -->
+          <button
+            *ngIf="auth.isAdmin()"
+            (click)="saveData()"
+            [disabled]="!hasChanges()"
+            class="save-button"
+            title="儲存所有修改"
+          >
+            <i class="fas fa-save"></i> 儲存
+          </button>
+        </div>
+      </header>
+
+      <section class="info-section">
+        <div (click)="enterEditMode('announcement', 0, 'content')">
+          <div
+            *ngIf="!isEditing('announcement', 0, 'content')"
+            class="editable-text announcement-text"
+            [innerHTML]="formatText(announcementText)"
+          ></div>
+          <textarea
+            *ngIf="isEditing('announcement', 0, 'content')"
+            #announcementInput
+            [(ngModel)]="announcementText"
+            (ngModelChange)="markUnsaved()"
+            (blur)="exitEditMode()"
+            class="edit-input announcement-input"
+          ></textarea>
+        </div>
+      </section>
+
+      <section class="duties-section">
+        <table class="duties-table">
+          <thead>
+            <tr>
+              <th class="shift-type-col">班別</th>
+              <th class="shift-code-col">班次代碼</th>
+              <th class="tasks-col">各組負責項目</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="shift-type-cell"><strong>白班</strong></td>
+              <td (click)="enterEditMode('dayShift', 0, 'codes')">
+                <div
+                  *ngIf="!isEditing('dayShift', 0, 'codes')"
+                  class="editable-text"
+                  [innerHTML]="formatText(dayShiftData.codes)"
+                ></div>
+                <textarea
+                  *ngIf="isEditing('dayShift', 0, 'codes')"
+                  #dayShiftCodesInput
+                  [(ngModel)]="dayShiftData.codes"
+                  (ngModelChange)="markUnsaved()"
+                  (blur)="exitEditMode()"
+                  class="edit-input"
+                ></textarea>
+              </td>
+              <td (click)="enterEditMode('dayShift', 0, 'tasks')">
+                <div
+                  *ngIf="!isEditing('dayShift', 0, 'tasks')"
+                  class="editable-text task-text"
+                  [innerHTML]="formatText(dayShiftData.tasks)"
+                ></div>
+                <textarea
+                  *ngIf="isEditing('dayShift', 0, 'tasks')"
+                  #dayShiftTasksInput
+                  [(ngModel)]="dayShiftData.tasks"
+                  (ngModelChange)="markUnsaved()"
+                  (blur)="exitEditMode()"
+                  class="edit-input"
+                ></textarea>
+              </td>
+            </tr>
+            <tr *ngFor="let duty of nightShiftDuties; let i = index">
+              <td *ngIf="i === 0" [attr.rowspan]="nightShiftDuties.length" class="shift-type-cell">
+                <strong>夜班</strong>
+              </td>
+              <td (click)="enterEditMode('nightShift', i, 'code')">
+                <span *ngIf="!isEditing('nightShift', i, 'code')" class="editable-text">{{ duty.code }}</span>
+                <input
+                  *ngIf="isEditing('nightShift', i, 'code')"
+                  #nightShiftCodeInput
+                  [(ngModel)]="duty.code"
+                  (ngModelChange)="markUnsaved()"
+                  (blur)="exitEditMode()"
+                  class="edit-input-inline"
+                />
+              </td>
+              <td (click)="enterEditMode('nightShift', i, 'tasks')">
+                <div
+                  *ngIf="!isEditing('nightShift', i, 'tasks')"
+                  class="editable-text task-text"
+                  [innerHTML]="formatText(duty.tasks)"
+                ></div>
+                <textarea
+                  *ngIf="isEditing('nightShift', i, 'tasks')"
+                  #nightShiftTasksInput
+                  [(ngModel)]="duty.tasks"
+                  (ngModelChange)="markUnsaved()"
+                  (blur)="exitEditMode()"
+                  class="edit-input"
+                ></textarea>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="closing-section">
+        <div class="closing-column">
+          <h3 class="table-title">關門前結束檢查</h3>
+          <div class="checklist">
+            <div
+              *ngFor="let item of checklistItems; let i = index"
+              (click)="enterEditMode('checklist', i, 'item')"
+              class="check-item"
+            >
+              <span class="checkbox"></span>
+              <span *ngIf="!isEditing('checklist', i, 'item')" class="editable-text">{{ item }}</span>
+              <input
+                *ngIf="isEditing('checklist', i, 'item')"
+                #checklistInput
+                [(ngModel)]="checklistItems[i]"
+                (ngModelChange)="markUnsaved()"
+                (blur)="exitEditMode()"
+                class="edit-input-inline"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="closing-column">
+          <h3 class="table-title">互助合作組</h3>
+          <div class="teamwork-list">
+            <div
+              *ngFor="let item of teamworkItems; let i = index"
+              (click)="enterEditMode('teamwork', i, 'item')"
+            >
+              <div
+                *ngIf="!isEditing('teamwork', i, 'item')"
+                class="editable-text"
+                [innerHTML]="formatText(item)"
+              ></div>
+              <textarea
+                *ngIf="isEditing('teamwork', i, 'item')"
+                #teamworkInput
+                [(ngModel)]="teamworkItems[i]"
+                (ngModelChange)="markUnsaved()"
+                (blur)="exitEditMode()"
+                class="edit-input"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 護理組別配置 Dialog -->
+  <app-nursing-group-config-dialog
+    [modelValue]="showGroupConfigDialog()"
+    [yearMonth]="selectedMonth"
+    (visibilityChange)="showGroupConfigDialog.set($event)"
+    (saved)="onGroupConfigSaved($event)"
+  ></app-nursing-group-config-dialog>
+
+  <!-- 組別衝突提示 Dialog -->
+  <app-alert-dialog
+    [isVisible]="showGroupConflictAlert()"
+    title="組別衝突提示"
+    [message]="groupConflictMessage()"
+    (confirm)="showGroupConflictAlert.set(false)"
+  ></app-alert-dialog>
+</div>

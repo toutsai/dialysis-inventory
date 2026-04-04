@@ -1,0 +1,32 @@
+@if (isVisible) {
+  <div class="dialog-backdrop">
+    <div class="condition-record-dialog">
+      <header class="dialog-header">
+        <h3>{{ patientName }} 的近期病情紀錄</h3>
+        <button class="close-btn" (click)="close()" title="關閉">&times;</button>
+      </header>
+      <main class="dialog-content">
+        @if (isLoading) {
+          <div class="empty-state">載入中...</div>
+        } @else if (records.length > 0) {
+          <ul class="record-list">
+            @for (record of records; track record.id) {
+              <li class="record-item">
+                <p class="record-content">{{ record.content }}</p>
+                <div class="record-meta">
+                  <span class="author">紀錄者: {{ record.authorName || '未知' }}</span>
+                  <span class="timestamp">{{ formatTimestamp(record.createdAt) }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="empty-state">該病人近 7 天內沒有病情紀錄。</div>
+        }
+      </main>
+      <footer class="dialog-footer">
+        <button class="btn-primary" (click)="close()">關閉</button>
+      </footer>
+    </div>
+  </div>
+}

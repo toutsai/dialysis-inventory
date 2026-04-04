@@ -1,0 +1,364 @@
+<div *ngIf="authService.isLoggedIn()">
+  <div class="page-container" [class.is-locked]="isPageLocked()">
+    <div class="desktop-only">
+      <h1 class="page-title">透析病人管理</h1>
+      <div class="main-stats-bar">
+        <div class="source-stats">
+          <button class="stat-tag" [class.active]="activeTab() === 'er'" (click)="changeTab('er')">
+            急診 <span class="count">{{ patientStats().source.er }}</span>
+          </button><button class="stat-tag" [class.active]="activeTab() === 'ipd'" (click)="changeTab('ipd')">
+            住院 <span class="count">{{ patientStats().source.ipd }}</span>
+          </button><button class="stat-tag" [class.active]="activeTab() === 'opd'" (click)="changeTab('opd')">
+            門診 <span class="count">{{ patientStats().source.opd }}</span>
+          </button><button class="stat-tag" [class.active]="activeTab() === 'deleted'" (click)="changeTab('deleted')">
+            已刪除 <span class="count">{{ patientStats().source.deleted }}</span>
+          </button>
+        </div>
+        <div class="detailed-stats">
+          <div class="hepatitis-stats">
+            <span class="hepatitis-badge hbv">B肝 <span class="count">{{ patientStats().disease['HBV'] || 0 }}</span></span>
+            <span class="hepatitis-badge hcv">C肝 <span class="count">{{ patientStats().disease['HCV'] || 0 }}</span></span>
+          </div>
+          <div class="stats-popover-wrapper">
+            <button class="stat-popover-trigger" (click)="togglePopover('opdChanges'); $event.stopPropagation()">門診變動</button>
+            <div *ngIf="activePopover() === 'opdChanges'" class="stats-popover opd-changes-popover">
+              <div class="popover-section-title">上個月</div>
+              <div class="popover-item"><span>新增</span><span>{{ patientStats().opdChanges.lastMonth.new }}</span></div>
+              <div class="popover-item"><span>轉出</span><span>{{ patientStats().opdChanges.lastMonth.transferOut }}</span></div>
+              <div class="popover-sub-item"><span>- 轉外院</span><span>{{ patientStats().opdChanges.lastMonth.details['轉外院透析'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 轉 PD</span><span>{{ patientStats().opdChanges.lastMonth.details['轉PD'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 腎移植</span><span>{{ patientStats().opdChanges.lastMonth.details['腎臟移植'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 轉安寧</span><span>{{ patientStats().opdChanges.lastMonth.details['轉安寧'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 腎功能恢復</span><span>{{ patientStats().opdChanges.lastMonth.details['腎功能恢復不須透析'] || 0 }}</span></div>
+              <div class="popover-item"><span>死亡</span><span>{{ patientStats().opdChanges.lastMonth.death }}</span></div>
+              <hr class="popover-divider" />
+              <div class="popover-section-title">本月至今</div>
+              <div class="popover-item"><span>新增</span><span>{{ patientStats().opdChanges.thisMonth.new }}</span></div>
+              <div class="popover-item"><span>轉出</span><span>{{ patientStats().opdChanges.thisMonth.transferOut }}</span></div>
+              <div class="popover-sub-item"><span>- 轉外院</span><span>{{ patientStats().opdChanges.thisMonth.details['轉外院透析'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 轉 PD</span><span>{{ patientStats().opdChanges.thisMonth.details['轉PD'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 腎移植</span><span>{{ patientStats().opdChanges.thisMonth.details['腎臟移植'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 轉安寧</span><span>{{ patientStats().opdChanges.thisMonth.details['轉安寧'] || 0 }}</span></div>
+              <div class="popover-sub-item"><span>- 腎功能恢復</span><span>{{ patientStats().opdChanges.thisMonth.details['腎功能恢復不須透析'] || 0 }}</span></div>
+              <div class="popover-item"><span>死亡</span><span>{{ patientStats().opdChanges.thisMonth.death }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-header mobile-only">
+      <h1 class="page-title">透析病人管理</h1>
+      <div class="source-stats">
+        <button class="stat-tag" [class.active]="activeTab() === 'er'" (click)="changeTab('er')">
+          急診 <span class="count">{{ patientStats().source.er }}</span>
+        </button><button class="stat-tag" [class.active]="activeTab() === 'ipd'" (click)="changeTab('ipd')">
+          住院 <span class="count">{{ patientStats().source.ipd }}</span>
+        </button><button class="stat-tag" [class.active]="activeTab() === 'opd'" (click)="changeTab('opd')">
+          門診 <span class="count">{{ patientStats().source.opd }}</span>
+        </button><button class="stat-tag" [class.active]="activeTab() === 'deleted'" (click)="changeTab('deleted')">
+          已刪除 <span class="count">{{ patientStats().source.deleted }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Desktop: non-deleted tab -->
+    <div *ngIf="activeTab() !== 'deleted'" class="tab-content active desktop-only">
+      <div class="view-header">
+        <div class="controls-left">
+          <div class="search-group global-search">
+            <input
+              type="text"
+              [ngModel]="globalSearchTerm()"
+              (ngModelChange)="globalSearchTerm.set($event)"
+              (keydown.enter)="handleGlobalSearch(globalSearchTerm())"
+              placeholder="搜尋/新增/轉移病人..."
+            /><button class="btn-search" (click)="handleGlobalSearch(globalSearchTerm())">執行</button>
+          </div>
+          <div class="search-group list-filter">
+            <input *ngIf="activeTab() === 'er'" type="text" [ngModel]="erListFilter()" (ngModelChange)="erListFilter.set($event)" placeholder="篩選列表..." />
+            <input *ngIf="activeTab() === 'ipd'" type="text" [ngModel]="ipdListFilter()" (ngModelChange)="ipdListFilter.set($event)" placeholder="篩選列表..." />
+            <input *ngIf="activeTab() === 'opd'" type="text" [ngModel]="opdListFilter()" (ngModelChange)="opdListFilter.set($event)" placeholder="篩選列表..." />
+          </div>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <div class="flex-table-wrapper">
+          <div class="flex-table-header">
+            <div class="flex-cell col-name" (click)="handleSort('name')">姓名</div>
+            <div *ngIf="activeTab() === 'ipd' || activeTab() === 'er'" class="flex-cell col-ward-number" (click)="handleSort('wardNumber')">住院床號</div>
+            <div class="flex-cell col-mrn" (click)="handleSort('medicalRecordNumber')">病歷號</div>
+            <div class="flex-cell col-physician" (click)="handleSort('physician')">{{ activeTab() === 'opd' ? '收案醫師' : '會診醫師' }}</div>
+            <div class="flex-cell col-freq" (click)="handleSort('freq')">頻率</div>
+            <div class="flex-cell col-mode">模式</div>
+            <div class="flex-cell col-status" (click)="handleSort('patientStatus')">狀態</div>
+            <div class="flex-cell col-hospital" (click)="handleSort('hospitalInfo')">透析院所</div>
+            <div class="flex-cell col-vasc-access">血管通路</div>
+            <div class="flex-cell col-remarks">備註</div>
+            <div class="flex-cell col-updated" (click)="handleSort('updatedAt')">異動日期</div>
+            <div class="flex-cell col-actions">操作</div>
+          </div>
+          <div class="flex-table-body">
+            <div *ngFor="let p of displayedPatients()" class="flex-table-row" [ngClass]="getRowClass(p)">
+              <div class="flex-cell col-name">
+                <div class="name-cell-content">
+                  <span class="patient-name-text">{{ p.name }}</span>
+                  <div *ngIf="p.diseases && p.diseases.length" class="disease-tags-container" [innerHTML]="generateDiseaseTags(p.diseases)"></div>
+                </div>
+              </div>
+              <div *ngIf="activeTab() === 'ipd' || activeTab() === 'er'" class="flex-cell col-ward-number">
+                <div class="ward-number-cell" (click)="promptWardNumber(p)" [class.is-editable]="!isPageLocked()">
+                  {{ p.wardNumber || '-' }}
+                </div>
+              </div>
+              <div class="flex-cell col-mrn">{{ p.medicalRecordNumber }}</div>
+              <div class="flex-cell col-physician">{{ p.physician }}</div>
+              <div class="flex-cell col-freq">{{ p.freq }}</div>
+              <div class="flex-cell col-mode">{{ p.mode }}</div>
+              <div class="flex-cell col-status">
+                <div class="status-icon-container">
+                  <i *ngIf="p.patientStatus?.isFirstDialysis?.active" class="fas fa-star status-icon-first" [title]="'首透: ' + (p.patientStatus.isFirstDialysis.date || '無日期')"></i>
+                  <i *ngIf="p.patientStatus?.isPaused?.active" class="fas fa-pause-circle status-icon-paused" [title]="'暫停透析: ' + (p.patientStatus.isPaused.date || '無日期')"></i>
+                  <i *ngIf="p.patientStatus?.hasBloodDraw?.active" class="fas fa-vial status-icon-blood" [title]="'已抽血: ' + (p.patientStatus.hasBloodDraw.date || '無日期')"></i>
+                </div>
+              </div>
+              <div class="flex-cell col-hospital">
+                <div class="hospital-cell-content">
+                  <span class="hospital-source">{{ p.hospitalInfo?.source }}</span>
+                  <div *ngIf="p.hospitalInfo?.source && p.hospitalInfo?.transferOut" class="hospital-divider"></div>
+                  <span class="hospital-transfer-out">{{ p.hospitalInfo?.transferOut }}</span>
+                </div>
+              </div>
+              <div class="flex-cell col-vasc-access">{{ p.vascAccess }}</div>
+              <div class="flex-cell col-remarks">{{ p.remarks }}</div>
+              <div class="flex-cell col-updated">{{ formatDate(p.updatedAt) }}</div>
+              <div class="flex-cell col-actions">
+                <div class="action-buttons">
+                  <button class="btn-icon btn-edit" (click)="openEditPatientModal(p)" [disabled]="isPageLocked()" title="編輯">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button><button class="btn-icon btn-order" (click)="openOrderModal(p)" [disabled]="isPageLocked()" title="醫囑">
+                    <i class="fas fa-notes-medical"></i>
+                  </button><button class="btn-icon btn-delete" (click)="deletePatient(p.id)" [disabled]="isDeleteLocked()" title="刪除">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                  <div class="action-divider"></div>
+                  <button *ngIf="activeTab() !== 'opd'" class="btn btn-transfer" (click)="transferPatient(p.id, 'opd')" [disabled]="isPageLocked()">
+                    <i class="fas fa-clinic-medical"></i> 轉門診
+                  </button><button *ngIf="activeTab() !== 'ipd'" class="btn btn-transfer" (click)="transferPatient(p.id, 'ipd')" [disabled]="isPageLocked()">
+                    <i class="fas fa-procedures"></i> 轉住院
+                  </button><button *ngIf="activeTab() !== 'er'" class="btn btn-transfer" (click)="transferPatient(p.id, 'er')" [disabled]="isPageLocked()">
+                    <i class="fas fa-ambulance"></i> 轉急診
+                  </button>
+                  <div class="action-divider"></div>
+                  <button class="btn-icon btn-history" (click)="openHistoryModal(p.id)" title="動向歷史">
+                    <i class="fas fa-history"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop: deleted tab -->
+    <div *ngIf="activeTab() === 'deleted'" class="tab-content active desktop-only">
+      <div class="toolbar">
+        <div class="search-group">
+          <input type="text" [ngModel]="deletedSearchTerm()" (ngModelChange)="deletedSearchTerm.set($event)" placeholder="搜尋已刪除病人..." />
+        </div>
+        <button (click)="exportDeletedPatients()" class="btn-export">轉出已刪除清單</button>
+      </div>
+      <div class="table-wrapper">
+        <table class="patient-table">
+          <thead>
+            <tr>
+              <th class="col-shrink" (click)="handleSort('name')">姓名</th>
+              <th class="col-shrink" (click)="handleSort('medicalRecordNumber')">病歷號</th>
+              <th class="col-shrink" (click)="handleSort('originalStatus')">原狀態</th>
+              <th class="col-shrink" (click)="handleSort('deleteReason')">刪除原因</th>
+              <th class="col-expand">備註</th>
+              <th class="col-shrink" (click)="handleSort('deletedAt')">刪除日期</th>
+              <th class="col-shrink">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of displayedPatients()" [ngClass]="getRowClass(p)">
+              <td class="col-shrink">{{ p.name }}</td>
+              <td class="col-shrink">{{ p.medicalRecordNumber }}</td>
+              <td class="col-shrink">{{ p.originalStatus === 'ipd' ? '住院' : p.originalStatus === 'er' ? '急診' : '門診' }}</td>
+              <td class="col-shrink">{{ p.deleteReason }}</td>
+              <td class="col-expand">{{ p.remarks }}</td>
+              <td class="col-shrink">{{ formatDate(p.deletedAt) }}</td>
+              <td class="col-actions action-buttons" style="justify-content: center">
+                <button class="btn btn-restore" (click)="restorePatient(p.id)" [disabled]="isPageLocked()">復原</button>
+                <button class="btn-icon btn-history" (click)="openHistoryModal(p.id)" title="動向歷史">
+                  <i class="fas fa-history"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mobile card view -->
+    <div class="tab-content-mobile mobile-only">
+      <div *ngIf="activeTab() !== 'deleted'" class="cards-container">
+        <div *ngFor="let p of displayedPatients()" class="patient-card" [ngClass]="getRowClass(p)">
+          <div class="card-header">
+            <div class="patient-name-section">
+              <span class="patient-name-text">{{ p.name }}</span>
+              <span class="freq-tag-card" [ngClass]="FREQ_COLOR_MAP[p.freq || '未設定']">{{ p.freq || '未設定' }}</span>
+            </div>
+            <div class="card-actions-header">
+              <button class="btn-icon btn-history" (click)="openHistoryModal(p.id)" title="動向歷史">
+                <i class="fas fa-history"></i>
+              </button><button class="btn-icon btn-delete" (click)="deletePatient(p.id)" [disabled]="isDeleteLocked()" title="刪除">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="info-grid">
+              <div *ngIf="activeTab() === 'ipd' || activeTab() === 'er'" class="info-item">
+                <span class="label">住院床號</span>
+                <span class="value" (click)="promptWardNumber(p)">{{ p.wardNumber || '-' }}</span>
+              </div>
+              <div class="info-item"><span class="label">病歷號</span><span class="value">{{ p.medicalRecordNumber }}</span></div>
+              <div class="info-item"><span class="label">醫師</span><span class="value">{{ p.physician }}</span></div>
+              <div class="info-item"><span class="label">模式</span><span class="value">{{ p.mode }}</span></div>
+              <div *ngIf="activeTab() === 'opd'" class="info-item"><span class="label">血管通路</span><span class="value">{{ p.vascAccess }}</span></div>
+              <div *ngIf="activeTab() !== 'opd'" class="info-item">
+                <span class="label">首透</span><span class="value">{{ p.isFirstDialysis ? '&#10003; (' + formatDate(p.firstDialysisDate) + ')' : '否' }}</span>
+              </div>
+              <div class="info-item"><span class="label">異動日期</span><span class="value">{{ formatDate(p.updatedAt) }}</span></div>
+            </div>
+            <div class="info-grid" style="margin-top: 0.5rem">
+              <div class="info-item"><span class="label">透析院所</span><span class="value">{{ p.hospitalInfo?.source || p.hospitalInfo?.transferOut }}</span></div>
+              <div class="info-item">
+                <span class="label">狀態</span>
+                <div class="status-icon-container">
+                  <i *ngIf="p.patientStatus?.isFirstDialysis?.active" class="fas fa-star status-icon-first" [title]="'首透: ' + (p.patientStatus.isFirstDialysis.date || '無日期')"></i>
+                  <i *ngIf="p.patientStatus?.isPaused?.active" class="fas fa-pause-circle status-icon-paused" [title]="'暫停透析: ' + (p.patientStatus.isPaused.date || '無日期')"></i>
+                  <i *ngIf="p.patientStatus?.hasBloodDraw?.active" class="fas fa-vial status-icon-blood" [title]="'已抽血: ' + (p.patientStatus.hasBloodDraw.date || '無日期')"></i>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="p.remarks" class="remarks-section">
+              <span class="label">備註:</span> {{ p.remarks }}
+            </div>
+            <div *ngIf="p.diseases && p.diseases.length" class="disease-tags-container" [innerHTML]="generateDiseaseTags(p.diseases)"></div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-edit" (click)="openEditPatientModal(p)" [disabled]="isPageLocked()">
+              <i class="fas fa-pencil-alt"></i> 編輯
+            </button><button class="btn btn-order" (click)="openOrderModal(p)" [disabled]="isPageLocked()">
+              <i class="fas fa-notes-medical"></i> 醫囑
+            </button><button *ngIf="activeTab() !== 'ipd'" class="btn btn-transfer" (click)="transferPatient(p.id, 'ipd')" [disabled]="isPageLocked()">
+              <i class="fas fa-procedures"></i> 轉住院
+            </button><button *ngIf="activeTab() !== 'opd'" class="btn btn-transfer" (click)="transferPatient(p.id, 'opd')" [disabled]="isPageLocked()">
+              <i class="fas fa-clinic-medical"></i> 轉門診
+            </button><button *ngIf="activeTab() !== 'er'" class="btn btn-transfer" (click)="transferPatient(p.id, 'er')" [disabled]="isPageLocked()">
+              <i class="fas fa-ambulance"></i> 轉急診
+            </button>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="activeTab() === 'deleted'">
+        <!-- Mobile deleted list placeholder -->
+      </div>
+    </div>
+
+    <div class="fixed-bottom-bar mobile-only">
+      <div class="search-group global-search">
+        <input
+          type="text"
+          [ngModel]="globalSearchTerm()"
+          (ngModelChange)="globalSearchTerm.set($event)"
+          (keydown.enter)="handleGlobalSearch(globalSearchTerm())"
+          placeholder="搜尋/新增/轉移病人..."
+        /><button class="btn-search" (click)="handleGlobalSearch(globalSearchTerm())">執行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialogs -->
+  <app-patient-form-modal
+    *ngIf="isModalVisible()"
+    [patientData]="editingPatient()"
+    [patientType]="modalType()"
+    (close)="closeModal()"
+    (save)="handleSavePatient($event)"
+  ></app-patient-form-modal>
+
+  <app-selection-dialog
+    *ngIf="isDeleteDialogVisible()"
+    title="請選擇刪除原因"
+    [options]="DELETE_REASONS"
+    (select)="handleDeleteReasonSelected($event)"
+    (cancel)="cancelDelete()"
+  ></app-selection-dialog>
+
+  <app-alert-dialog
+    *ngIf="isAlertDialogVisible()"
+    [title]="alertDialogTitle()"
+    [message]="alertDialogMessage()"
+    (confirm)="isAlertDialogVisible.set(false)"
+  ></app-alert-dialog>
+
+  <app-confirm-dialog
+    *ngIf="isConfirmDialogVisible()"
+    [title]="confirmDialogTitle()"
+    [message]="confirmDialogMessage()"
+    (confirm)="handleConfirm()"
+    (cancel)="handleCancel()"
+  ></app-confirm-dialog>
+
+  <app-dialysis-order-modal
+    *ngIf="isOrderModalVisible()"
+    [patient]="editingPatientForOrder()"
+    (close)="isOrderModalVisible.set(false)"
+    (save)="handleSaveOrder($event)"
+  ></app-dialysis-order-modal>
+
+  <app-patient-history-modal
+    *ngIf="isHistoryModalVisible()"
+    [patientId]="selectedPatientForHistory()?.id"
+    [patientName]="selectedPatientForHistory()?.name"
+    (close)="isHistoryModalVisible.set(false)"
+  ></app-patient-history-modal>
+
+  <app-selection-dialog
+    *ngIf="isRestoreDialogVisible()"
+    title="請選擇復原位置"
+    [options]="RESTORE_OPTIONS"
+    (select)="handleRestoreSelected($event)"
+    (cancel)="isRestoreDialogVisible.set(false)"
+  ></app-selection-dialog>
+
+  <app-ward-number-dialog
+    *ngIf="isWardDialogVisible()"
+    [currentValue]="currentWardNumber()"
+    (confirm)="handleWardNumberConfirm($event)"
+    (cancel)="isWardDialogVisible.set(false)"
+  ></app-ward-number-dialog>
+
+  <app-confirm-dialog
+    *ngIf="isScheduleConflictDialogVisible()"
+    [title]="scheduleConflictTitle()"
+    [message]="scheduleConflictMessage()"
+    confirmText="是，繼續操作"
+    cancelText="否，使用預約變更"
+    (confirm)="handleScheduleConflictConfirm()"
+    (cancel)="handleScheduleConflictCancel()"
+  ></app-confirm-dialog>
+
+  <app-patient-update-scheduler-dialog
+    *ngIf="isSchedulerDialogVisible()"
+    [patient]="schedulerPatient()"
+    [changeType]="schedulerChangeType()"
+    (close)="isSchedulerDialogVisible.set(false)"
+    (submit)="handleSchedulerSubmit($event)"
+  ></app-patient-update-scheduler-dialog>
+</div>

@@ -1,0 +1,62 @@
+<div class="login-container">
+  <div class="login-box">
+    <h1 class="login-title">部北透析管理平台</h1>
+    <form (submit)="$event.preventDefault(); handleLogin()" class="login-form">
+      <div class="form-group">
+        <label for="username">帳號</label>
+        <input
+          type="text"
+          id="username"
+          [value]="username()"
+          (input)="onUsernameInput($event)"
+          required
+          autocomplete="username"
+          placeholder="請輸入帳號"
+          [disabled]="isLoading()"
+        />
+      </div>
+      <div class="form-group">
+        <label for="password">密碼</label>
+        <div class="password-wrapper">
+          <input
+            [type]="isPasswordVisible() ? 'text' : 'password'"
+            id="password"
+            [value]="password()"
+            (input)="onPasswordInput($event)"
+            required
+            autocomplete="current-password"
+            placeholder="請輸入密碼"
+            [disabled]="isLoading()"
+          />
+          <span class="password-toggle-icon" (click)="togglePasswordVisibility()">
+            {{ isPasswordVisible() ? '\uD83D\uDE48' : '\uD83D\uDC41\uFE0F' }}
+          </span>
+        </div>
+      </div>
+      @if (errorMessage()) {
+        <p class="error-message">{{ errorMessage() }}</p>
+      }
+      <button type="submit" class="login-button" [disabled]="isLoading()">
+        {{ isLoading() ? '登入系統中...' : '登入' }}
+      </button>
+    </form>
+
+    <div class="user-notice">
+      <p><strong>使用者須知：</strong></p>
+      <ul>
+        <li>帳號：預設為您的 <strong>HIS 帳號</strong>。</li>
+        <li>密碼：請使用管理員設定的密碼登入。</li>
+        <li>密碼規則：至少 8 個字元，包含大寫、小寫字母和數字。</li>
+      </ul>
+      <p class="forgot-password">若忘記密碼，請聯繫系統管理員或護理長重設。</p>
+    </div>
+  </div>
+
+  <!-- Full-screen loading overlay -->
+  @if (isLoading()) {
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <p class="loading-text">正在驗證身分，請稍候...</p>
+    </div>
+  }
+</div>

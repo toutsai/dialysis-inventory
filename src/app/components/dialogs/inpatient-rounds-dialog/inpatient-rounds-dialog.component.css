@@ -1,0 +1,172 @@
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+}
+.dialog-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+.dialog-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #aaa;
+  padding: 0;
+  line-height: 1;
+}
+.dialog-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.shift-section {
+  margin-bottom: 2rem;
+}
+.shift-title {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #0056b3;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #007bff;
+}
+.rounds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+.rounds-table th,
+.rounds-table td {
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+.rounds-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+.no-data {
+  text-align: center;
+  color: #888;
+  font-size: 1.2rem;
+  padding: 2rem;
+}
+.btn-primary-dialog {
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+.btn-primary-dialog:hover {
+  background-color: #0056b3;
+}
+.transport-display {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+  min-width: 80px;
+  text-align: center;
+  font-weight: 500;
+}
+.transport-display:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+.transport-display.unconfirmed {
+  color: #6c757d;
+  font-style: italic;
+}
+.print-header {
+  display: none;
+}
+@media print {
+  body.printing-rounds-dialog .dialog-overlay {
+    background-color: white;
+    position: static;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  body.printing-rounds-dialog .dialog-content {
+    box-shadow: none;
+    border-radius: 0;
+    max-height: none;
+    width: 100%;
+    max-width: 100%;
+    border: none;
+  }
+  body.printing-rounds-dialog .dialog-header {
+    display: none;
+  }
+  body.printing-rounds-dialog .dialog-body {
+    padding: 0;
+    overflow-y: visible;
+  }
+  body.printing-rounds-dialog .print-header {
+    display: block;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  body.printing-rounds-dialog .print-header h4 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  body.printing-rounds-dialog .transport-display {
+    border: none;
+    background: none;
+    color: black !important;
+    font-style: normal !important;
+  }
+  body.printing-rounds-dialog .rounds-table {
+    font-size: 12pt;
+    width: 100%;
+    page-break-inside: auto;
+  }
+  body.printing-rounds-dialog .rounds-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  body.printing-rounds-dialog .rounds-table th,
+  body.printing-rounds-dialog .rounds-table td {
+    padding: 8px;
+  }
+}

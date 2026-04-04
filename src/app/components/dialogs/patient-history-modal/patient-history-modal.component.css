@@ -1,0 +1,136 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 900px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+.close-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+}
+.modal-body {
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+.loading-spinner,
+.no-history {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+  font-size: 1.1rem;
+}
+.episodes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.episode-card {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+}
+.timeline-wrapper {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.episode-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #495057;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.timeline {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.timeline-item {
+  display: flex;
+  align-items: center;
+}
+.timeline-arrow {
+  font-size: 2rem;
+  color: #adb5bd;
+  margin: 0 1rem;
+}
+.timeline-content {
+  border: 1px solid #e9ecef;
+  background-color: #ffffff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  text-align: center;
+  min-width: 180px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-left-width: 4px;
+}
+.marker-create {
+  border-left-color: #28a745;
+}
+.marker-transfer {
+  border-left-color: #17a2b8;
+}
+.marker-delete {
+  border-left-color: #dc3545;
+}
+.marker-restore,
+.marker-restore_and_transfer {
+  border-left-color: #ffc107;
+}
+.timestamp {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 5px;
+  display: block;
+}
+.event-description {
+  margin: 0;
+  font-size: 1rem;
+  color: #495057;
+  line-height: 1.5;
+  font-weight: 500;
+}
+:host ::ng-deep strong {
+  color: #005a9c;
+  font-weight: 600;
+}

@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "my-dialysis-app-develop",
+    "production": "dialysis-schedule-cd36c"
+  }
+}
