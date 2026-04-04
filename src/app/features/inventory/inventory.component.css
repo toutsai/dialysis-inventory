@@ -4,6 +4,8 @@
   flex-direction: row;
   height: calc(100vh - 2.75rem);
   background-color: #f8f9fa;
+  padding: 0;
+  margin: 0;
 }
 
 /* === 側邊欄 === */
