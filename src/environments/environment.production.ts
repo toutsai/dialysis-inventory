@@ -2,12 +2,12 @@ export const environment = {
   production: true,
   appEnv: 'production' as const,
   firebase: {
-    apiKey: 'YOUR_API_KEY',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    appId: 'YOUR_APP_ID',
+    apiKey: 'AIzaSyD2YxjeuWhDeaKCygNS_62EFnxs8AHrSV0',
+    authDomain: 'hd-inventorymanagement.firebaseapp.com',
+    projectId: 'hd-inventorymanagement',
+    storageBucket: 'hd-inventorymanagement.firebasestorage.app',
+    messagingSenderId: '521268415154',
+    appId: '1:521268415154:web:a21fcd4b39217d2156d7ab',
   },
   useEmulators: false,
 };

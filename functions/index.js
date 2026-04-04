@@ -21,6 +21,8 @@ const bcrypt = require('bcryptjs')
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:4200',
+  'https://hd-inventorymanagement.web.app',
+  'https://hd-inventorymanagement.firebaseapp.com',
 ]
 
 // ===================================================================
