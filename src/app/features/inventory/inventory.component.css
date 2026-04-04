@@ -63,7 +63,8 @@ h1 {
   border: 1px solid #dee2e6;
   border-radius: 0 8px 8px 8px;
   display: flex;
-  overflow: hidden;
+  overflow: auto;
+  min-height: 0;
 }
 
 .tab-panel {
