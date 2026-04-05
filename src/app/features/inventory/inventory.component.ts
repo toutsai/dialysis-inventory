@@ -81,7 +81,7 @@ export class InventoryComponent implements OnInit {
   purchases = signal<any[]>([]);
   purchaseLoading = signal(false);
   purchaseFilter = {
-    month: new Date().toISOString().slice(0, 7),
+    month: new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7),
     category: '',
   };
   showPurchaseModal = signal(false);
@@ -109,7 +109,7 @@ export class InventoryComponent implements OnInit {
   uploadResult = signal<any>(null);
   isDragOver = signal(false);
 
-  summaryMonth = new Date().toISOString().slice(0, 7);
+  summaryMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7);
   summaryLoading = signal(false);
   summaryLoaded = signal(false);
   monthlySummaryData: Record<string, Record<string, number>> = {
@@ -645,10 +645,11 @@ export class InventoryComponent implements OnInit {
 
       // 1. Find the latest inventory_counts document (monthly or weekly)
       const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const prevMonth = now.getMonth() === 0
-        ? `${now.getFullYear() - 1}-12`
-        : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
+      const currentMonth = this.toTaiwanMonth(now);
+      const [cmYear, cmMonth] = currentMonth.split('-').map(Number);
+      const prevMonth = cmMonth === 1
+        ? `${cmYear - 1}-12`
+        : `${cmYear}-${String(cmMonth - 1).padStart(2, '0')}`;
 
       // 1a. Find latest monthly count
       let lastCountDoc = await getDoc(doc(db, 'inventory_counts', currentMonth));
@@ -705,7 +706,7 @@ export class InventoryComponent implements OnInit {
       }
 
       // 3. Consumption since count date
-      const todayStr = now.toISOString().split('T')[0];
+      const todayStr = this.toTaiwanDate(now);
       let consumption: Record<string, Record<string, number>> = {};
       if (countDate && countDate < todayStr) {
         const result = await this.dailyConsumption.getConsumptionByRange(countDate, todayStr);
@@ -724,13 +725,13 @@ export class InventoryComponent implements OnInit {
 
       // 5. Calculate last week's consumption (上週一~上週六, 6天)
       const lastWeekConsumption: Record<string, Record<string, number>> = {};
-      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const dayOfWeek = this.getTaiwanDay(now); // 0=Sun, 1=Mon, ..., 6=Sat
       const lastMonday = new Date(now);
       lastMonday.setDate(now.getDate() - dayOfWeek - 6); // Last Monday
       const lastSaturday = new Date(lastMonday);
       lastSaturday.setDate(lastMonday.getDate() + 5); // Last Saturday
-      const lastMondayStr = lastMonday.toISOString().split('T')[0];
-      const lastSaturdayStr = lastSaturday.toISOString().split('T')[0];
+      const lastMondayStr = this.toTaiwanDate(lastMonday);
+      const lastSaturdayStr = this.toTaiwanDate(lastSaturday);
 
       try {
         const weekResult = await this.dailyConsumption.getConsumptionByRange(lastMondayStr, lastSaturdayStr);
@@ -746,7 +747,7 @@ export class InventoryComponent implements OnInit {
       try {
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = this.toTaiwanDate(yesterday);
         const yesterdayResult = await this.dailyConsumption.getDailyConsumption(yesterdayStr);
         if (yesterdayResult) {
           yesterdayData = yesterdayResult;
@@ -962,12 +963,14 @@ export class InventoryComponent implements OnInit {
   // ==================== Tab 3 Methods ====================
 
   private getDefaultMonthlyDates(): { firstDay: string; lastDay: string; countDate: string } {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const firstDay = new Date(year, month, 1).toISOString().slice(0, 10);
-    const lastDay = new Date(year, month + 1, 0).toISOString().slice(0, 10);
-    const countDate = today.toISOString().slice(0, 10);
+    const countDate = this.toTaiwanDate();
+    const [yearStr, monthStr] = countDate.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const firstDay = `${year}-${pad(month)}-01`;
+    const lastDayDate = new Date(year, month, 0); // last day of that month
+    const lastDay = `${year}-${pad(month)}-${pad(lastDayDate.getDate())}`;
     return { firstDay, lastDay, countDate };
   }
 
@@ -988,7 +991,7 @@ export class InventoryComponent implements OnInit {
 
       const prevDate = new Date(startDate);
       prevDate.setDate(prevDate.getDate() - 1);
-      const prevCountKey = prevDate.toISOString().slice(0, 7);
+      const prevCountKey = this.toTaiwanMonth(prevDate);
 
       const prevCountDoc = await getDoc(doc(db, 'inventory_counts', prevCountKey));
       const prevCounts = prevCountDoc.exists() ? (prevCountDoc.data() as any).counts || {} : {};
@@ -1090,7 +1093,7 @@ export class InventoryComponent implements OnInit {
 
       // Show saved info
       const createdAt = data.createdAt?.toDate
-        ? data.createdAt.toDate().toLocaleString('zh-TW')
+        ? data.createdAt.toDate().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
         : '未知';
       this.monthlySavedInfo.set({
         createdBy: data.createdBy || '未知',
@@ -1115,7 +1118,7 @@ export class InventoryComponent implements OnInit {
     endDate: Date,
   ): Promise<Record<string, Record<string, number>>> {
     const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fmt = (d: Date) => this.toTaiwanDate(d);
     const result = await this.dailyConsumption.getConsumptionByRange(fmt(startDate), fmt(endDate));
     return result.grouped;
   }
@@ -1162,7 +1165,7 @@ export class InventoryComponent implements OnInit {
   // ==================== Tab 4 Methods ====================
 
   private getDefaultCountDate(): string {
-    return new Date().toISOString().slice(0, 10);
+    return this.toTaiwanDate();
   }
 
   private getISOWeek(date: Date): string {
@@ -1235,7 +1238,7 @@ export class InventoryComponent implements OnInit {
       lastSaturday.setDate(lastMonday.getDate() + 5); // Mon to Sat = 6 days
 
       const pad = (n: number) => String(n).padStart(2, '0');
-      const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const fmt = (d: Date) => this.toTaiwanDate(d);
       const lastWeekStart = fmt(lastMonday);
       const lastWeekEnd = fmt(lastSaturday);
 
@@ -1395,7 +1398,7 @@ export class InventoryComponent implements OnInit {
     sunday.setDate(monday.getDate() + 6);
 
     const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fmt = (d: Date) => this.toTaiwanDate(d);
     return { start: fmt(monday), end: fmt(sunday) };
   }
 
@@ -1524,8 +1527,8 @@ export class InventoryComponent implements OnInit {
 
   openOrderPreview(): void {
     const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const fmtLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const fmt = (d: Date) => this.toTaiwanDate(d);
+    const fmtLabel = (d: Date) => { const s = this.toTaiwanDate(d).split('-'); return `${parseInt(s[1])}/${parseInt(s[2])}`; };
     const dayNames = ['一', '二', '三', '四', '五', '六'];
 
     // Today as order date
@@ -1693,8 +1696,7 @@ export class InventoryComponent implements OnInit {
   formatTimestamp(ts: any): string {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return this.toTaiwanDateTime(d).replace('T', ' ');
   }
 
   async loadMonthlyHistory(): Promise<void> {
@@ -1760,32 +1762,53 @@ export class InventoryComponent implements OnInit {
   formatDate(timestamp: any): string {
     if (!timestamp) return '-';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('zh-TW');
+    return date.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
   }
 
   formatDateTime(timestamp: any): string {
     if (!timestamp) return '-';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('zh-TW') + ' ' + date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }) + ' ' + date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' });
   }
 
   private formatDateForInput(timestamp: any): string {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toISOString().slice(0, 10);
+    return this.toTaiwanDate(date);
   }
 
   private formatDateTimeForInput(timestamp: any): string {
     if (!timestamp) return '';
     const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return this.toTaiwanDateTime(d);
   }
 
   private getNowLocalDatetime(): string {
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return this.toTaiwanDateTime(new Date());
+  }
+
+  /** 台灣時區格式化：YYYY-MM-DD */
+  private toTaiwanDate(date: Date = new Date()): string {
+    return date.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+  }
+
+  /** 台灣時區格式化：YYYY-MM */
+  private toTaiwanMonth(date: Date = new Date()): string {
+    return this.toTaiwanDate(date).slice(0, 7);
+  }
+
+  /** 台灣時區格式化：YYYY-MM-DDTHH:mm (for datetime-local input) */
+  private toTaiwanDateTime(date: Date = new Date()): string {
+    const dateStr = this.toTaiwanDate(date);
+    const timeStr = date.toLocaleTimeString('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${dateStr}T${timeStr}`;
+  }
+
+  /** 取得台灣時區的星期幾 (0=Sun, 1=Mon, ..., 6=Sat) */
+  private getTaiwanDay(date: Date = new Date()): number {
+    const dayStr = date.toLocaleDateString('en-US', { timeZone: 'Asia/Taipei', weekday: 'short' });
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return dayMap[dayStr] ?? date.getDay();
   }
 
   private async loadKnownItems(): Promise<void> {
