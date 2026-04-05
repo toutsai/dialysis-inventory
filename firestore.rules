@@ -42,6 +42,11 @@ service cloud.firestore {
       allow write: if isAdminOrViewerRole();
     }
 
+    match /inventory_orders/{orderId} {
+      allow read: if isViewer();
+      allow write: if isAdminOrViewerRole();
+    }
+
     match /inventory_counts/{countId} {
       allow read: if isViewer();
       allow write: if isAdminOrViewerRole();
