@@ -12,9 +12,15 @@ export class AlertDialogComponent {
   @Input() isVisible = false;
   @Input() title = '';
   @Input() message = '';
+  @Input() showCancel = false;
   @Output() confirm = new EventEmitter<void>();
+  @Output() cancel = new EventEmitter<void>();
 
   handleConfirm(): void {
     this.confirm.emit();
+  }
+
+  handleCancel(): void {
+    this.cancel.emit();
   }
 }

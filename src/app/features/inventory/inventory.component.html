@@ -500,12 +500,12 @@
     <div class="tab-panel">
       <div class="panel-header">
         <h3>每週訂單計算</h3>
-        <p class="panel-description">訂購量 = 安全庫存(9天) - 週二盤點</p>
+        <p class="panel-description">訂購量 = 安全庫存(9天) - 盤點量 - 預計本周到貨</p>
       </div>
 
       <div class="filter-bar">
         <div class="filter-field">
-          <label>盤點日（週二）</label>
+          <label>盤點日</label>
           <input type="date" [(ngModel)]="weeklyFilter.countDate" />
         </div>
         <div class="filter-field">
@@ -519,10 +519,10 @@
 
       @if (weeklyDataLoaded()) {
         <div class="weekly-content">
-          <!-- 週二盤點輸入區 -->
+          <!-- 盤點輸入區 -->
           <div class="weekly-section">
             <div class="section-header">
-              <h4>週二盤點輸入 ({{ weeklyFilter.countDate }})</h4>
+              <h4>盤點輸入 ({{ weeklyFilter.countDate }})</h4>
               <button class="btn-sm btn-primary" (click)="saveWeeklyCount()" [disabled]="weeklyLoading()">
                 儲存盤點
               </button>
@@ -574,7 +574,8 @@
                     <th>類別</th>
                     <th>品項</th>
                     <th>每箱數量</th>
-                    <th>週二盤點(個)</th>
+                    <th>盤點量(個)</th>
+                    <th>預計到貨(個)</th>
                     <th>上週消耗(個)</th>
                     <th>日均消耗</th>
                     <th>安全庫存(9天)</th>
@@ -590,6 +591,7 @@
                         <td>{{ item }}</td>
                         <td>{{ getUnitsPerBox(category, item) }}</td>
                         <td>{{ weeklyCount[category]?.[item] || 0 }}</td>
+                        <td>{{ getPendingPurchase(category, item) }}</td>
                         <td>{{ getWeeklyConsumption(category, item) }}</td>
                         <td>{{ getDailyAvg(category, item) }}</td>
                         <td>{{ getSafetyStock(category, item) }}</td>
@@ -786,6 +788,8 @@
     [isVisible]="isAlertDialogVisible()"
     [title]="alertDialogTitle()"
     [message]="alertDialogMessage()"
-    (confirm)="isAlertDialogVisible.set(false)"
+    [showCancel]="alertDialogShowCancel()"
+    (confirm)="onAlertConfirm()"
+    (cancel)="onAlertCancel()"
   ></app-alert-dialog>
 </div>

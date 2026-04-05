@@ -10,7 +10,10 @@
         <pre>{{ message }}</pre>
       </main>
       <footer class="dialog-footer">
-        <button class="btn-primary" (click)="handleConfirm()">確定</button>
+        @if (showCancel) {
+          <button class="btn-secondary" (click)="handleCancel()">否</button>
+        }
+        <button class="btn-primary" (click)="handleConfirm()">{{ showCancel ? '是' : '確定' }}</button>
       </footer>
     </dialog>
   </div>
