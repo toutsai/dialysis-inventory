@@ -1,32 +1,29 @@
 <div class="page-container">
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
-    <div class="sidebar-header">
-      <h2>庫存管理</h2>
-    </div>
     <nav class="sidebar-nav">
       <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">
-        <span class="nav-icon">&#x1F4CA;</span>庫存總覽
+        <span class="nav-icon">📊</span>庫存總覽
       </button>
       <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">
-        <span class="nav-icon">&#x1F4CB;</span>品項設定
+        <span class="nav-icon">📋</span>品項設定
       </button>
       <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">
-        <span class="nav-icon">&#x1F4E6;</span>進貨紀錄
+        <span class="nav-icon">📦</span>進貨紀錄
       </button>
       <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">
-        <span class="nav-icon">&#x1F4C4;</span>消耗紀錄
+        <span class="nav-icon">📄</span>消耗紀錄
       </button>
       <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">
-        <span class="nav-icon">&#x1F4C5;</span>每月盤點
+        <span class="nav-icon">📅</span>每月盤點
       </button>
       <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
-        <span class="nav-icon">&#x1F4DD;</span>每週訂單
+        <span class="nav-icon">📝</span>每週訂單
       </button>
       @if (authService.isAdmin()) {
         <div class="sidebar-divider"></div>
         <button [class.active]="activeTab() === 'users'" (click)="activeTab.set('users'); fetchUsers()">
-          <span class="nav-icon">&#x1F465;</span>使用者管理
+          <span class="nav-icon">👥</span>使用者管理
         </button>
       }
     </nav>
