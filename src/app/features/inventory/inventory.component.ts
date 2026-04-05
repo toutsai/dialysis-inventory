@@ -7,7 +7,7 @@ import { DailyConsumptionService } from '@services/daily-consumption.service';
 import { AlertDialogComponent } from '@app/components/dialogs/alert-dialog/alert-dialog.component';
 import {
   collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc,
-  doc, Timestamp, setDoc, getDoc,
+  doc, Timestamp, setDoc, getDoc, limit,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import * as XLSX from 'xlsx';
@@ -170,6 +170,13 @@ export class InventoryComponent implements OnInit {
       (category) => Object.keys(this.weeklyCount[category]).length > 0
     );
   }
+
+  // History lists
+  orderHistory = signal<any[]>([]);
+  orderHistoryLoading = signal(false);
+  expandedOrderId = signal<string | null>(null);
+  monthlyHistory = signal<any[]>([]);
+  monthlyHistoryLoading = signal(false);
 
   knownItems: Record<string, string[]> = {
     artificialKidney: [],
@@ -636,13 +643,14 @@ export class InventoryComponent implements OnInit {
     try {
       const db = this.firebaseService.db;
 
-      // 1. Find the latest inventory_counts document
+      // 1. Find the latest inventory_counts document (monthly or weekly)
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const prevMonth = now.getMonth() === 0
         ? `${now.getFullYear() - 1}-12`
         : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
 
+      // 1a. Find latest monthly count
       let lastCountDoc = await getDoc(doc(db, 'inventory_counts', currentMonth));
       let countDateStr = currentMonth;
       if (!lastCountDoc.exists()) {
@@ -650,12 +658,34 @@ export class InventoryComponent implements OnInit {
         countDateStr = prevMonth;
       }
 
-      const baseCounts: Record<string, Record<string, number>> = lastCountDoc.exists()
+      let baseCounts: Record<string, Record<string, number>> = lastCountDoc.exists()
         ? (lastCountDoc.data() as any).counts || {}
         : {};
-      const countDate = lastCountDoc.exists()
+      let countDate = lastCountDoc.exists()
         ? (lastCountDoc.data() as any).countDate || `${countDateStr}-01`
         : '';
+
+      // 1b. Check if a more recent weekly count exists → use it as baseline
+      try {
+        const weeklyQuery = query(
+          collection(db, 'inventory_counts'),
+          where('type', '==', 'weekly'),
+          orderBy('countDate', 'desc'),
+          limit(1)
+        );
+        const weeklySnap = await getDocs(weeklyQuery);
+        if (!weeklySnap.empty) {
+          const weeklyData = weeklySnap.docs[0].data() as any;
+          const weeklyCountDate = weeklyData.countDate || '';
+          if (weeklyCountDate > countDate) {
+            baseCounts = weeklyData.counts || {};
+            countDate = weeklyCountDate;
+          }
+        }
+      } catch (e) {
+        console.warn('週盤點查詢失敗，使用月盤點基準:', e);
+      }
+
       this.dashboardLastCountDate.set(countDate);
 
       // 2. Sum purchases since the count date
@@ -1626,6 +1656,84 @@ export class InventoryComponent implements OnInit {
   getOrderRowTotal(category: string, item: string): number {
     const grid = this.orderPreviewGrid[`${category}|${item}`] || [];
     return grid.reduce((sum: number, v: number) => sum + (v || 0), 0);
+  }
+
+  // ==================== History Lists ====================
+
+  async loadOrderHistory(): Promise<void> {
+    this.orderHistoryLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const q = query(
+        collection(db, 'inventory_orders'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+      const snap = await getDocs(q);
+      this.orderHistory.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error: any) {
+      console.error('載入歷史訂單失敗:', error);
+    } finally {
+      this.orderHistoryLoading.set(false);
+    }
+  }
+
+  toggleOrderDetail(id: string): void {
+    this.expandedOrderId.set(this.expandedOrderId() === id ? null : id);
+  }
+
+  getOrderItemSummary(order: any): string {
+    const items = order.items || [];
+    return items.map((i: any) => {
+      const total = (i.grid || []).reduce((s: number, v: number) => s + (v || 0), 0);
+      return `${i.item}(${total})`;
+    }).join('、');
+  }
+
+  formatTimestamp(ts: any): string {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async loadMonthlyHistory(): Promise<void> {
+    this.monthlyHistoryLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const q = query(
+        collection(db, 'inventory_counts'),
+        where('type', '==', 'monthly'),
+        orderBy('createdAt', 'desc'),
+        limit(12)
+      );
+      const snap = await getDocs(q);
+      this.monthlyHistory.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error: any) {
+      console.error('載入歷史盤點失敗:', error);
+    } finally {
+      this.monthlyHistoryLoading.set(false);
+    }
+  }
+
+  getMonthlyCountSummary(record: any): string {
+    const counts = record.counts || {};
+    const items: string[] = [];
+    for (const category of Object.keys(counts)) {
+      for (const [item, qty] of Object.entries(counts[category])) {
+        items.push(`${item}(${qty})`);
+      }
+    }
+    return items.slice(0, 5).join('、') + (items.length > 5 ? '...' : '');
+  }
+
+  loadMonthlyHistoryRecord(record: any): void {
+    // Set the filter to match the historical record's dates
+    this.monthlyFilter.countDate = record.countDate || '';
+    this.monthlyFilter.startDate = record.startDate || '';
+    this.monthlyFilter.endDate = record.endDate || '';
+    // Use existing loadSavedMonthlyCount to populate the table
+    this.loadSavedMonthlyCount();
   }
 
   getHospitalCode(category: string, itemName: string): string {
