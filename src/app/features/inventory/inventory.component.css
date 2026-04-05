@@ -797,13 +797,13 @@ tfoot tr:first-child td {
 }
 
 .dash-card-warning {
-  border-left-color: #ffc107;
-  background: #fffdf0;
+  border-left-color: #fd7e14;
+  background: #fff8f0;
 }
 
-.dash-card-danger {
-  border-left-color: #dc3545;
-  background: #fff5f5;
+.dash-card-low {
+  border-left-color: #ffc107;
+  background: #fffdf0;
 }
 
 .dash-card-critical {
@@ -844,12 +844,12 @@ tfoot tr:first-child td {
   line-height: 1.2;
 }
 
-.dash-card-danger .dash-card-stock {
-  color: #dc3545;
+.dash-card-low .dash-card-stock {
+  color: #856404;
 }
 
 .dash-card-warning .dash-card-stock {
-  color: #856404;
+  color: #e8590c;
 }
 
 .dash-card-safe-level {
@@ -950,12 +950,11 @@ tfoot tr:first-child td {
 }
 
 .dot-warning {
-  background-color: #ffc107;
+  background-color: #fd7e14;
 }
 
-.dot-danger {
-  background-color: #dc3545;
-  animation: pulse-dot 1.5s infinite;
+.dot-low {
+  background-color: #ffc107;
 }
 
 .dot-critical {

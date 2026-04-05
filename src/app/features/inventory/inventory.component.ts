@@ -43,7 +43,7 @@ export class InventoryComponent implements OnInit {
   // ==================== Dashboard ====================
   dashboardLoading = signal(false);
   dashboardLoaded = signal(false);
-  dashboardItems = signal<{ category: string; itemName: string; estimatedStock: number; safeLevel: number; autoSafeLevel: number; dailyUsage: number; todayConsumption: number; remainingAfterToday: number; status: 'safe' | 'warning' | 'danger' | 'critical' }[]>([]);
+  dashboardItems = signal<{ category: string; itemName: string; estimatedStock: number; safeLevel: number; autoSafeLevel: number; minStockLevel: number; dailyUsage: number; todayConsumption: number; remainingAfterToday: number; status: 'safe' | 'warning' | 'low' | 'critical' }[]>([]);
   dashboardLastCountDate = signal('');
   yesterdayConsumption = signal<Record<string, Record<string, number>>>({});
 
@@ -739,34 +739,31 @@ export class InventoryComponent implements OnInit {
         const consumed = consumption[category]?.[itemName] || 0;
         const estimatedStock = base + bought - consumed;
 
-        // 上週消耗 → 日均用量 → 自動安全庫存
+        // 上週消耗 → 日均用量 → 自動安全庫存(9天)
         const weeklyUsage = lastWeekConsumption[category]?.[itemName] || 0;
         const dailyUsage = weeklyUsage > 0 ? +(weeklyUsage / 6).toFixed(1) : 0;
-        const manualSafeLevel = safetyMap.get(key) || 0;
-        const autoSafeLevel = dailyUsage > 0 ? +(dailyUsage * 8).toFixed(0) : 0;
-        const safeLevel = autoSafeLevel > 0 ? autoSafeLevel : manualSafeLevel;
+        const minStockLevel = safetyMap.get(key) || 0;
+        const autoSafeLevel = dailyUsage > 0 ? Math.ceil(dailyUsage * 9) : 0;
+        const safeLevel = autoSafeLevel > 0 ? autoSafeLevel : minStockLevel;
 
-        // 今日預估消耗
+        // 昨日消耗
         const todayConsumption = yesterdayData[category]?.[itemName] || 0;
         const remainingAfterToday = estimatedStock - todayConsumption;
 
-        // 4 階狀態判定
-        let status: 'safe' | 'warning' | 'danger' | 'critical' = 'safe';
-        if (dailyUsage > 0) {
-          if (remainingAfterToday < 0) status = 'critical';
-          else if (remainingAfterToday < dailyUsage) status = 'danger';
-          else if (remainingAfterToday < dailyUsage * 2) status = 'warning';
-        } else if (manualSafeLevel > 0) {
-          // 沒有上週數據時，回退到手動安全庫存
-          if (estimatedStock < 0) status = 'critical';
-          else if (estimatedStock <= 0) status = 'danger';
-          else if (estimatedStock <= manualSafeLevel) status = 'warning';
+        // 4 階狀態判定：critical(紅) / low(黃) / warning(橘) / safe(綠)
+        let status: 'safe' | 'warning' | 'low' | 'critical' = 'safe';
+        if (estimatedStock <= 0) {
+          status = 'critical';
+        } else if (minStockLevel > 0 && estimatedStock <= minStockLevel) {
+          status = 'low';
+        } else if (autoSafeLevel > 0 && estimatedStock <= autoSafeLevel) {
+          status = 'warning';
         }
 
-        dashItems.push({ category, itemName, estimatedStock, safeLevel, autoSafeLevel, dailyUsage, todayConsumption, remainingAfterToday, status });
+        dashItems.push({ category, itemName, estimatedStock, safeLevel, autoSafeLevel, minStockLevel, dailyUsage, todayConsumption, remainingAfterToday, status });
       });
 
-      const statusOrder: Record<string, number> = { critical: 0, danger: 1, warning: 2, safe: 3 };
+      const statusOrder: Record<string, number> = { critical: 0, low: 1, warning: 2, safe: 3 };
       dashItems.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
       this.dashboardItems.set(dashItems);
