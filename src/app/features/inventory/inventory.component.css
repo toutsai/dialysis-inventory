@@ -1,78 +1,127 @@
 /* === 基礎佈局 === */
 .page-container {
   display: flex;
-  flex-direction: column;
-  height: calc(100vh - 2rem);
-  padding: 0.5rem;
+  flex-direction: row;
+  height: calc(100vh - 2.75rem);
   background-color: #f8f9fa;
-}
-
-.page-header {
-  flex-shrink: 0;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #dee2e6;
-}
-
-h1 {
-  font-size: 2rem;
+  padding: 0;
   margin: 0;
 }
 
-.page-description {
-  font-size: 1rem;
-  color: #6c757d;
-  margin: 0.5rem 0 0 0;
-}
-
-/* === Tabs 導航 === */
-.tabs-navigation {
-  display: flex;
-  gap: 0.5rem;
+/* === 側邊欄 === */
+.sidebar {
+  width: 200px;
   flex-shrink: 0;
-  margin-bottom: -1px;
+  background-color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #334155;
 }
 
-.tabs-navigation button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 0;
+  flex-grow: 1;
+}
+
+.sidebar-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  border: 1px solid transparent;
-  border-bottom: none;
+  border: none;
   background-color: transparent;
-  color: #6c757d;
+  color: #94a3b8;
   cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  transition: all 0.2s;
+  text-align: left;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
 }
 
-.tabs-navigation button.active {
-  background-color: #fff;
-  color: #007bff;
-  border-color: #dee2e6;
+.sidebar-nav button:hover {
+  background-color: #334155;
+  color: #e2e8f0;
 }
 
-.tabs-navigation button:hover:not(.active) {
-  background-color: #e9ecef;
+.sidebar-nav button.active {
+  background-color: #0f172a;
+  color: #60a5fa;
+  border-left-color: #3b82f6;
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.1rem;
+  width: 1.4rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: #334155;
+  margin: 0.5rem 1rem;
 }
 
 /* === 主內容區 === */
 .page-main-content {
   flex-grow: 1;
   background-color: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 0 8px 8px 8px;
   display: flex;
-  overflow: hidden;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* === 手機版：側邊欄改為頂部橫列 === */
+@media (max-width: 768px) {
+  .page-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #334155;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    padding: 0;
+    flex-grow: 0;
+  }
+
+  .sidebar-nav button {
+    padding: 0.75rem 1rem;
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    font-size: 0.85rem;
+  }
+
+  .sidebar-nav button.active {
+    border-left-color: transparent;
+    border-bottom-color: #3b82f6;
+  }
+
+  .nav-icon {
+    display: none;
+  }
 }
 
 .tab-panel {
   width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  overflow: auto;
+  padding: 1.5rem 2rem;
 }
 
 /* === 面板標頭 === */
@@ -304,7 +353,6 @@ tbody tr:hover {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .search-controls {
@@ -395,102 +443,186 @@ tbody tr:nth-child(even) .sticky-col {
   background-color: #f8f9fa;
 }
 
-/* === 上傳區域 === */
-.upload-panel {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 2rem;
-}
-
-.upload-core-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  align-items: center;
-  padding: 2rem;
-  width: 100%;
-  max-width: 600px;
-}
-
-.upload-drop-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem;
-  border: 2px dashed #adb5bd;
-  border-radius: 12px;
-  background-color: #f8f9fa;
-  width: 100%;
-  text-align: center;
-  transition: all 0.2s ease-in-out;
-}
-
-.upload-drop-zone.is-dragover {
-  border-color: #007bff;
-  background-color: #e7f1ff;
-}
-
-.upload-icon {
-  font-size: 3rem;
-  color: #007bff;
+/* === 上傳工具列 === */
+.upload-toolbar {
+  flex-shrink: 0;
+  padding: 0.75rem 0;
   margin-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
 }
 
-.upload-drop-zone h3 {
-  margin: 0 0 0.5rem 0;
+.upload-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.upload-toolbar-left.is-dragover {
+  background-color: #e7f1ff;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.upload-toolbar .file-input-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  background-color: #fff;
+  border: 1px solid #adb5bd;
   color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.upload-hint {
-  color: #6c757d;
-  margin: 0 0 1.5rem 0;
+.upload-toolbar .file-input-label:hover {
+  background-color: #e9ecef;
+}
+
+.upload-status {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+}
+
+.upload-status.is-success {
+  color: #155724;
+  background-color: #d4edda;
+}
+
+.upload-status.has-error {
+  color: #721c24;
+  background-color: #f8d7da;
 }
 
 input[type='file'] {
   display: none;
 }
 
-.file-input-label {
-  display: inline-block;
-  padding: 0.6rem 1.2rem;
-  background-color: #fff;
-  border: 1px solid #6c757d;
+/* === 每日消耗明細表格 === */
+.daily-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.daily-category-section {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.daily-category-title {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background-color: #f1f3f5;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #495057;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
+  border-bottom: 1px solid #e9ecef;
 }
 
-.file-input-label:hover {
-  background-color: #e9ecef;
+.daily-table-wrapper {
+  overflow-x: auto;
 }
 
-.upload-btn-main {
-  padding: 0.75rem 2rem;
-  font-size: 1.1rem;
+.daily-grid-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
 }
 
-.upload-result-toast {
-  width: 100%;
-  padding: 1rem;
-  border-radius: 6px;
-  font-weight: 500;
+.daily-grid-table th,
+.daily-grid-table td {
+  padding: 0.35rem 0.5rem;
   text-align: center;
+  border: 1px solid #e9ecef;
+  white-space: nowrap;
 }
 
-.upload-result-toast.is-success {
+.daily-grid-table thead th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #6c757d;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.daily-grid-table thead th.has-data {
   color: #155724;
   background-color: #d4edda;
-  border: 1px solid #c3e6cb;
 }
 
-.upload-result-toast.has-error {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
+.sticky-item-col {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background-color: #f8f9fa;
+  min-width: 120px;
+  text-align: left;
+  font-weight: 500;
 }
+
+.daily-grid-table tbody .sticky-item-col {
+  background-color: #fff;
+}
+
+.daily-grid-table tbody tr:nth-child(even) .sticky-item-col {
+  background-color: #f8f9fa;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.day-cell {
+  min-width: 36px;
+  color: #495057;
+}
+
+.day-cell.has-value {
+  background-color: #f0f7ff;
+  font-weight: 500;
+  color: #0d47a1;
+}
+
+.total-col {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background-color: #fff3cd;
+  font-weight: 700;
+  min-width: 55px;
+}
+
+.total-value {
+  color: #856404;
+  font-weight: 700;
+}
+
+.daily-grid-table thead .total-col {
+  background-color: #ffeeba;
+  color: #856404;
+}
+
+.uploaded-days-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+  padding: 0.4rem 0.75rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
 
 /* === 每月盤點 === */
 .monthly-summary {
@@ -798,7 +930,7 @@ tfoot tr:first-child td {
 
 .dash-card-warning {
   border-left-color: #fd7e14;
-  background: #fff8f0;
+  background: #fff4e6;
 }
 
 .dash-card-low {
@@ -1007,4 +1139,28 @@ tr.dash-warning {
 .forecast-value {
   font-weight: 600;
   color: #212529;
+}
+
+/* === 角色標籤 === */
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.role-admin {
+  background-color: #fce4ec;
+  color: #c62828;
+}
+
+.role-editor {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.role-viewer {
+  background-color: #f1f8e9;
+  color: #558b2f;
 }

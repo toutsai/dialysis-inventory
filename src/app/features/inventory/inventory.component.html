@@ -1,20 +1,35 @@
 <div class="page-container">
-  <header class="page-header">
-    <div class="header-main-content">
-      <h1>庫存管理</h1>
-      <p class="page-description">管理耗材進貨、消耗紀錄、每月盤點與每週訂單。</p>
-    </div>
-  </header>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">
+        <span class="nav-icon">📊</span>庫存總覽
+      </button>
+      <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">
+        <span class="nav-icon">📋</span>品項設定
+      </button>
+      <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">
+        <span class="nav-icon">📦</span>進貨紀錄
+      </button>
+      <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">
+        <span class="nav-icon">📄</span>消耗紀錄
+      </button>
+      <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">
+        <span class="nav-icon">📅</span>每月盤點
+      </button>
+      <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
+        <span class="nav-icon">📝</span>每週訂單
+      </button>
+      @if (authService.isAdmin()) {
+        <div class="sidebar-divider"></div>
+        <button [class.active]="activeTab() === 'users'" (click)="activeTab.set('users'); fetchUsers()">
+          <span class="nav-icon">👥</span>使用者管理
+        </button>
+      }
+    </nav>
+  </aside>
 
-  <div class="tabs-navigation">
-    <button [class.active]="activeTab() === 'dashboard'" (click)="activeTab.set('dashboard'); loadDashboard()">庫存總覽</button>
-    <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')">品項設定</button>
-    <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')">進貨紀錄</button>
-    <button [class.active]="activeTab() === 'consumption'" (click)="activeTab.set('consumption')">消耗紀錄</button>
-    <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">每月盤點</button>
-    <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">每週訂單</button>
-  </div>
-
+  <!-- Main Content Area -->
   <main class="page-main-content">
     <!-- ========== Dashboard: 庫存總覽 ========== -->
     @if (activeTab() === 'dashboard') {
@@ -56,10 +71,7 @@
                       <span class="status-dot" [class.dot-safe]="item.status === 'safe'" [class.dot-warning]="item.status === 'warning'" [class.dot-low]="item.status === 'low'" [class.dot-critical]="item.status === 'critical'"></span>
                     </div>
                     <div class="dash-card-stock">{{ item.estimatedStock }}</div>
-                    <div class="dash-card-safe-level">安全庫存：{{ item.safeLevel > 0 ? item.safeLevel : '-' }}</div>
-                    @if (item.minStockLevel > 0) {
-                      <div class="dash-card-safe-level">最低庫存：{{ item.minStockLevel }}</div>
-                    }
+                    <div class="dash-card-safe-level">安全庫存：{{ item.autoSafeLevel > 0 ? item.autoSafeLevel : '-' }} ｜ 最低：{{ item.minStockLevel > 0 ? item.minStockLevel : '-' }}</div>
                     @if (item.dailyUsage > 0) {
                       <div class="dash-card-detail">日均：{{ item.dailyUsage }} ｜ 昨日消耗：{{ item.todayConsumption }} ｜ 餘：{{ item.remainingAfterToday }}</div>
                     }
@@ -266,114 +278,97 @@
     @if (activeTab() === 'consumption') {
     <div class="tab-panel">
 
-      <!-- 資料上傳 -->
-      <div class="sub-panel upload-panel">
-        <div class="upload-core-panel">
-          <h4>上傳每日耗材消耗 Excel</h4>
-          <div
-            class="upload-drop-zone"
-            [class.is-dragover]="isDragOver()"
-            (dragover)="onDragOver($event)"
-            (dragleave)="onDragLeave($event)"
-            (drop)="onDrop($event)"
-          >
-            <div class="upload-icon">&#x1F4E4;</div>
-            @if (!selectedFile()) {
-              <h3>拖曳 Excel 檔案至此，或點擊按鈕選擇</h3>
-            } @else {
-              <h3>已選擇檔案：<strong>{{ selectedFile()!.name }}</strong></h3>
-            }
-            <p class="upload-hint">
-              支援 .xlsx, .xls 格式。請確保標題行包含 '人工腎臟', '透析藥水CA', 或 'B液種類'。
-            </p>
-            <input
-              id="file-input"
-              type="file"
-              (change)="onFileSelect($event)"
-              accept=".xlsx, .xls"
-              [disabled]="isUploading()"
-            />
-            <label for="file-input" class="file-input-label">
-              {{ selectedFile() ? '重新選擇檔案' : '選擇檔案' }}
-            </label>
-          </div>
-          <button class="btn-primary upload-btn-main" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
-            {{ isUploading() ? '處理中...' : '開始上傳' }}
+      <!-- 上傳工具列 -->
+      <div class="upload-toolbar">
+        <div class="upload-toolbar-left"
+          [class.is-dragover]="isDragOver()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            id="file-input"
+            type="file"
+            (change)="onFileSelect($event)"
+            accept=".xlsx, .xls"
+            [disabled]="isUploading()"
+          />
+          <label for="file-input" class="file-input-label">
+            {{ selectedFile() ? selectedFile()!.name : '選擇 Excel 檔案' }}
+          </label>
+          <button class="btn-primary btn-sm" (click)="handleUpload()" [disabled]="!selectedFile() || isUploading()">
+            {{ isUploading() ? '處理中...' : '上傳' }}
           </button>
           @if (uploadResult()) {
-            <div
-              class="upload-result-toast"
-              [class.has-error]="uploadResult()!.errorCount > 0"
-              [class.is-success]="uploadResult()!.errorCount === 0"
-            >
+            <span class="upload-status" [class.has-error]="uploadResult()!.errorCount > 0" [class.is-success]="!uploadResult()!.errorCount">
               {{ uploadResult()!.message }}
-            </div>
+            </span>
           }
         </div>
       </div>
 
-      <!-- 當月消耗總量 -->
-      <div class="sub-panel" style="margin-top: 2rem;">
+      <!-- 每日消耗明細 -->
+      <div class="consumption-content">
         <div class="search-controls">
           <div class="search-field">
             <label>選擇月份</label>
             <input type="month" [(ngModel)]="summaryMonth" />
           </div>
           <button (click)="loadMonthlySummary()" [disabled]="summaryLoading()" class="btn-primary">
-            {{ summaryLoading() ? '載入中...' : '查詢總量' }}
+            {{ summaryLoading() ? '載入中...' : '查詢' }}
           </button>
           <button
             (click)="exportMonthlySummary()"
             [disabled]="summaryLoading() || !summaryLoaded()"
             class="btn-success"
           >匯出 Excel</button>
+          @if (summaryLoaded()) {
+            <span class="uploaded-days-info">
+              已上傳 {{ uploadedDays().size }} / {{ daysInMonth().length }} 天
+            </span>
+          }
         </div>
 
         <div class="report-display">
           @if (summaryLoading()) {
-            <div class="loading-state">正在計算當月消耗總量...</div>
+            <div class="loading-state">正在載入每日消耗資料...</div>
           } @else if (!summaryLoaded()) {
             <div class="placeholder-text">請選擇月份並點擊查詢。</div>
           } @else {
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>類別</th>
-                    <th>品項</th>
-                    <th>每箱數量</th>
-                    <th>當月消耗(個)</th>
-                    <th>當月消耗(箱)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (category of categoryKeys; track category) {
-                    @for (item of getSummaryItemKeys(category); track item) {
-                      <tr>
-                        <td>{{ CATEGORY_NAMES[category] }}</td>
-                        <td>{{ item }}</td>
-                        <td>{{ getUnitsPerBox(category, item) }}</td>
-                        <td>{{ monthlySummaryData[category][item] }}</td>
-                        <td class="box-cell">{{ calculateBoxes(category, item, monthlySummaryData[category][item]) }}</td>
-                      </tr>
-                    }
-                  }
-                </tbody>
-                <tfoot>
-                  <tr class="summary-total-row">
-                    <td colspan="3"><strong>各類別小計</strong></td>
-                    <td colspan="2"></td>
-                  </tr>
-                  @for (category of categoryKeys; track category) {
-                    <tr class="category-total">
-                      <td>{{ CATEGORY_NAMES[category] }}</td>
-                      <td colspan="2">合計</td>
-                      <td><strong>{{ getCategoryTotal(category) }}</strong></td>
-                      <td class="box-cell">-</td>
-                    </tr>
-                  }
-                </tfoot>
-              </table>
+            <div class="daily-grid-container">
+              @for (category of categoryKeys; track category) {
+                @if (getSummaryItemKeys(category).length > 0) {
+                  <div class="daily-category-section">
+                    <h4 class="daily-category-title">{{ CATEGORY_NAMES[category] }}</h4>
+                    <div class="daily-table-wrapper">
+                      <table class="daily-grid-table">
+                        <thead>
+                          <tr>
+                            <th class="sticky-item-col">品項</th>
+                            @for (day of daysInMonth(); track day) {
+                              <th [class.has-data]="uploadedDays().has(day)">{{ day }}</th>
+                            }
+                            <th class="total-col">合計</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of getSummaryItemKeys(category); track item) {
+                            <tr>
+                              <td class="sticky-item-col item-name">{{ item }}</td>
+                              @for (day of daysInMonth(); track day) {
+                                <td class="day-cell" [class.has-value]="getDayValue(category, item, day) !== null">
+                                  {{ getDayValue(category, item, day) ?? '' }}
+                                </td>
+                              }
+                              <td class="total-col total-value">{{ getItemTotal(category, item) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+              }
             </div>
           }
         </div>
@@ -617,7 +612,126 @@
       }
     </div>
     }
+
+    <!-- ========== 使用者管理 ========== -->
+    @if (activeTab() === 'users') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>使用者管理</h3>
+        <button class="btn-primary" (click)="openUserModal()">+ 新增使用者</button>
+      </div>
+
+      @if (usersLoading()) {
+        <div class="loading-state">載入中...</div>
+      } @else if (users().length === 0) {
+        <div class="empty-state">尚無使用者資料</div>
+      } @else {
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>帳號</th>
+                <th>職稱</th>
+                <th>角色</th>
+                <th>Email</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of users(); track user.id) {
+                <tr>
+                  <td>{{ user.name }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.title }}</td>
+                  <td>
+                    <span class="role-badge" [class.role-admin]="user.role === 'admin'" [class.role-editor]="user.role === 'editor'" [class.role-viewer]="user.role === 'viewer'">
+                      {{ getRoleName(user.role) }}
+                    </span>
+                  </td>
+                  <td>{{ user.email || '-' }}</td>
+                  <td>
+                    <button class="btn-sm btn-edit" (click)="openResetPasswordModal(user)">重設密碼</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+    }
   </main>
+
+  <!-- 新增使用者 Modal -->
+  @if (showUserModal()) {
+  <div class="modal-overlay" (click)="$event.target === $event.currentTarget && closeUserModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>新增使用者</h3>
+        <button class="modal-close" (click)="closeUserModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>帳號 *</label>
+          <input type="text" [(ngModel)]="userForm.username" placeholder="登入用帳號" />
+        </div>
+        <div class="form-field">
+          <label>密碼 *</label>
+          <input type="text" [(ngModel)]="userForm.password" placeholder="至少8字元，含大小寫和數字" />
+        </div>
+        <div class="form-field">
+          <label>姓名 *</label>
+          <input type="text" [(ngModel)]="userForm.name" placeholder="使用者姓名" />
+        </div>
+        <div class="form-field">
+          <label>職稱 *</label>
+          <input type="text" [(ngModel)]="userForm.title" placeholder="例如：護理師" />
+        </div>
+        <div class="form-field">
+          <label>角色 *</label>
+          <select [(ngModel)]="userForm.role">
+            <option value="viewer">檢視者</option>
+            <option value="contributor">貢獻者</option>
+            <option value="editor">編輯者</option>
+            <option value="admin">管理員</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="userForm.email" placeholder="選填" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeUserModal()">取消</button>
+        <button class="btn-primary" (click)="saveUser()">建立</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 重設密碼 Modal -->
+  @if (showResetPasswordModal()) {
+  <div class="modal-overlay" (click)="$event.target === $event.currentTarget && closeResetPasswordModal()">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>重設密碼 — {{ resetPasswordUserName() }}</h3>
+        <button class="modal-close" (click)="closeResetPasswordModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label>新密碼</label>
+          <input type="text" [(ngModel)]="resetPasswordNewPassword" placeholder="至少8字元，含大小寫和數字" />
+          <p style="font-size: 0.8rem; color: #6c757d; margin-top: 0.25rem;">密碼規則：至少 8 字元，包含大寫、小寫字母和數字。</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeResetPasswordModal()">取消</button>
+        <button class="btn-primary" (click)="resetPassword()">確認重設</button>
+      </div>
+    </div>
+  </div>
+  }
 
   <!-- 訂單預覽 Modal -->
   @if (showOrderPreview()) {

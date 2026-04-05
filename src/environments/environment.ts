@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  appEnv: 'emulator' as const,
+  appEnv: 'development' as const,
   firebase: {
     apiKey: 'AIzaSyD2YxjeuWhDeaKCygNS_62EFnxs8AHrSV0',
     authDomain: 'hd-inventorymanagement.firebaseapp.com',
@@ -9,5 +9,5 @@ export const environment = {
     messagingSenderId: '521268415154',
     appId: '1:521268415154:web:a21fcd4b39217d2156d7ab',
   },
-  useEmulators: true,
+  useEmulators: false,
 };

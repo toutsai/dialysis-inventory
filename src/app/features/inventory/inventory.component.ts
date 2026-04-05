@@ -9,6 +9,7 @@ import {
   collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc,
   doc, Timestamp, setDoc, getDoc,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import * as XLSX from 'xlsx';
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -116,6 +117,10 @@ export class InventoryComponent implements OnInit {
     dialysateCa: {},
     bicarbonateType: {},
   };
+
+  // Daily breakdown for calendar view
+  daysInMonth = signal<number[]>([]);
+  uploadedDays = signal<Set<number>>(new Set());
 
   // ==================== Tab 3: 每月盤點 ====================
   monthlyLoading = signal(false);
@@ -739,10 +744,10 @@ export class InventoryComponent implements OnInit {
         const consumed = consumption[category]?.[itemName] || 0;
         const estimatedStock = base + bought - consumed;
 
-        // 上週消耗 → 日均用量 → 自動安全庫存(9天)
+        // 上週消耗 → 日均用量 → 安全庫存（9天量）
         const weeklyUsage = lastWeekConsumption[category]?.[itemName] || 0;
         const dailyUsage = weeklyUsage > 0 ? +(weeklyUsage / 6).toFixed(1) : 0;
-        const minStockLevel = safetyMap.get(key) || 0;
+        const minStockLevel = safetyMap.get(key) || 0; // 品項設定的最低庫存量
         const autoSafeLevel = dailyUsage > 0 ? Math.ceil(dailyUsage * 9) : 0;
         const safeLevel = autoSafeLevel > 0 ? autoSafeLevel : minStockLevel;
 
@@ -750,14 +755,14 @@ export class InventoryComponent implements OnInit {
         const todayConsumption = yesterdayData[category]?.[itemName] || 0;
         const remainingAfterToday = estimatedStock - todayConsumption;
 
-        // 4 階狀態判定：critical(紅) / low(黃) / warning(橘) / safe(綠)
+        // 4 階狀態判定：綠 > 橘 > 黃 > 紅
         let status: 'safe' | 'warning' | 'low' | 'critical' = 'safe';
         if (estimatedStock <= 0) {
-          status = 'critical';
+          status = 'critical'; // 紅色：存量 ≤ 0
         } else if (minStockLevel > 0 && estimatedStock <= minStockLevel) {
-          status = 'low';
+          status = 'low'; // 黃色：存量 ≤ 最低庫存量
         } else if (autoSafeLevel > 0 && estimatedStock <= autoSafeLevel) {
-          status = 'warning';
+          status = 'warning'; // 橘色：存量 ≤ 安全庫存量
         }
 
         dashItems.push({ category, itemName, estimatedStock, safeLevel, autoSafeLevel, minStockLevel, dailyUsage, todayConsumption, remainingAfterToday, status });
@@ -816,6 +821,9 @@ export class InventoryComponent implements OnInit {
     }
   }
 
+  // dailyGrid[category:item][day] = count
+  dailyGrid = signal<Record<string, Record<number, number>>>({});
+
   async loadMonthlySummary(): Promise<void> {
     this.summaryLoading.set(true);
     this.summaryLoaded.set(false);
@@ -825,10 +833,38 @@ export class InventoryComponent implements OnInit {
     }
 
     try {
-      const consumption = await this.getMonthlyConsumption(this.summaryMonth);
-      for (const category of Object.keys(this.monthlySummaryData)) {
-        this.monthlySummaryData[category] = consumption[category] || {};
+      // Build days array for the selected month
+      const [year, month] = this.summaryMonth.split('-').map(Number);
+      const totalDays = new Date(year, month, 0).getDate();
+      this.daysInMonth.set(Array.from({ length: totalDays }, (_, i) => i + 1));
+
+      // Load daily breakdown and build grid
+      const dailyMap = await this.dailyConsumption.getMonthlyDailyBreakdown(this.summaryMonth);
+      const grid: Record<string, Record<number, number>> = {};
+      const uploaded = new Set<number>();
+
+      dailyMap.forEach((totals, date) => {
+        const day = parseInt(date.split('-')[2], 10);
+        uploaded.add(day);
+        for (const category of Object.keys(totals)) {
+          for (const [item, count] of Object.entries(totals[category])) {
+            const key = `${category}:${item}`;
+            if (!grid[key]) grid[key] = {};
+            grid[key][day] = (grid[key][day] || 0) + count;
+          }
+        }
+      });
+
+      this.dailyGrid.set(grid);
+      this.uploadedDays.set(uploaded);
+
+      // Build totals from grid
+      for (const [key, days] of Object.entries(grid)) {
+        const [category, item] = key.split(':');
+        if (!this.monthlySummaryData[category]) this.monthlySummaryData[category] = {};
+        this.monthlySummaryData[category][item] = Object.values(days).reduce((sum, v) => sum + v, 0);
       }
+
       this.summaryLoaded.set(true);
     } catch (error: any) {
       console.error('載入當月總量失敗:', error);
@@ -843,31 +879,40 @@ export class InventoryComponent implements OnInit {
     return Object.values(data).reduce((sum, count) => sum + (count || 0), 0);
   }
 
+  getDayValue(category: string, item: string, day: number): number | null {
+    const grid = this.dailyGrid();
+    const key = `${category}:${item}`;
+    return grid[key]?.[day] ?? null;
+  }
+
+  getItemTotal(category: string, item: string): number {
+    const grid = this.dailyGrid();
+    const key = `${category}:${item}`;
+    const days = grid[key];
+    if (!days) return 0;
+    return Object.values(days).reduce((sum, v) => sum + v, 0);
+  }
+
   exportMonthlySummary(): void {
-    const rows: any[][] = [['類別', '品項', '每箱數量', '當月消耗(個)', '當月消耗(箱)']];
+    const days = this.daysInMonth();
+    const headerRow: any[] = ['類別', '品項', ...days.map(d => `${d}日`), '合計'];
+    const rows: any[][] = [headerRow];
 
     for (const category of Object.keys(CATEGORY_NAMES)) {
       const items = this.monthlySummaryData[category] || {};
-      for (const [item, count] of Object.entries(items)) {
-        rows.push([
-          CATEGORY_NAMES[category],
-          item,
-          this.getUnitsPerBox(category, item),
-          count,
-          this.calculateBoxes(category, item, count),
-        ]);
+      for (const item of Object.keys(items)) {
+        const row: any[] = [CATEGORY_NAMES[category], item];
+        for (const day of days) {
+          row.push(this.getDayValue(category, item, day) ?? '');
+        }
+        row.push(this.getItemTotal(category, item));
+        rows.push(row);
       }
-    }
-
-    rows.push([]);
-    rows.push(['類別小計', '', '', '', '']);
-    for (const category of Object.keys(CATEGORY_NAMES)) {
-      rows.push([CATEGORY_NAMES[category], '合計', '', this.getCategoryTotal(category), '']);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '當月消耗總量');
+    XLSX.utils.book_append_sheet(wb, ws, '每日消耗明細');
 
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
@@ -1529,5 +1574,104 @@ export class InventoryComponent implements OnInit {
       if (modal === 'purchase') this.closePurchaseModal();
       else this.closeItemModal();
     }
+  }
+
+  // ==================== 使用者管理 ====================
+  users = signal<any[]>([]);
+  usersLoading = signal(false);
+  showUserModal = signal(false);
+  userForm = {
+    username: '',
+    password: '',
+    name: '',
+    title: '',
+    role: 'viewer' as string,
+    email: '',
+  };
+
+  showResetPasswordModal = signal(false);
+  resetPasswordUserId = signal('');
+  resetPasswordUserName = signal('');
+  resetPasswordNewPassword = '';
+
+  async fetchUsers(): Promise<void> {
+    this.usersLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const snapshot = await getDocs(query(collection(db, 'users'), orderBy('name')));
+      this.users.set(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error('載入使用者失敗:', error);
+    } finally {
+      this.usersLoading.set(false);
+    }
+  }
+
+  openUserModal(): void {
+    this.userForm = { username: '', password: '', name: '', title: '', role: 'viewer', email: '' };
+    this.showUserModal.set(true);
+  }
+
+  closeUserModal(): void {
+    this.showUserModal.set(false);
+  }
+
+  async saveUser(): Promise<void> {
+    if (!this.userForm.username || !this.userForm.password || !this.userForm.name || !this.userForm.title || !this.userForm.role) {
+      this.showAlert('提示', '請填寫所有必要欄位。');
+      return;
+    }
+    try {
+      const createUserFn = httpsCallable(this.firebaseService.functions, 'createUser');
+      await createUserFn({
+        username: this.userForm.username,
+        password: this.userForm.password,
+        name: this.userForm.name,
+        title: this.userForm.title,
+        role: this.userForm.role,
+        email: this.userForm.email,
+      });
+      this.closeUserModal();
+      await this.fetchUsers();
+      this.showAlert('操作成功', '使用者已建立。');
+    } catch (error: any) {
+      console.error('建立使用者失敗:', error);
+      this.showAlert('建立失敗', error.message);
+    }
+  }
+
+  openResetPasswordModal(user: any): void {
+    this.resetPasswordUserId.set(user.id);
+    this.resetPasswordUserName.set(user.name);
+    this.resetPasswordNewPassword = '';
+    this.showResetPasswordModal.set(true);
+  }
+
+  closeResetPasswordModal(): void {
+    this.showResetPasswordModal.set(false);
+  }
+
+  async resetPassword(): Promise<void> {
+    if (!this.resetPasswordNewPassword) {
+      this.showAlert('提示', '請輸入新密碼。');
+      return;
+    }
+    try {
+      const resetFn = httpsCallable(this.firebaseService.functions, 'adminResetPassword');
+      await resetFn({
+        userId: this.resetPasswordUserId(),
+        newPassword: this.resetPasswordNewPassword,
+      });
+      this.closeResetPasswordModal();
+      this.showAlert('操作成功', `已重設 ${this.resetPasswordUserName()} 的密碼。`);
+    } catch (error: any) {
+      console.error('重設密碼失敗:', error);
+      this.showAlert('重設失敗', error.message);
+    }
+  }
+
+  getRoleName(role: string): string {
+    const map: Record<string, string> = { admin: '管理員', editor: '編輯者', contributor: '貢獻者', viewer: '檢視者' };
+    return map[role] || role;
   }
 }
