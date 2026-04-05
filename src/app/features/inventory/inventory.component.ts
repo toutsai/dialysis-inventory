@@ -1281,7 +1281,7 @@ export class InventoryComponent implements OnInit {
     const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
     const countDay = countDateObj.getTime();
-    const missingBefore: string[] = [];
+    const missingBefore: { date: Date; label: string }[] = [];
     let sameDayMissing: { date: Date; label: string } | null = null;
 
     for (const dd of deliveryDays) {
@@ -1304,31 +1304,46 @@ export class InventoryComponent implements OnInit {
           sameDayMissing = dd;
         } else {
           // Scenario A: delivery day before count date
-          missingBefore.push(dd.label);
+          missingBefore.push(dd);
         }
       }
     }
 
+    // Scenario B helper
+    const showSameDayAlert = sameDayMissing ? () => {
+      const todayLabel = `週${dayNames[sameDayMissing!.date.getDay()]}`;
+      this.showConfirm(
+        '進貨提醒',
+        `今天（${todayLabel}）是進貨日但無進貨紀錄，是否現在輸入？`,
+        () => { this.activeTab.set('purchase'); },
+      );
+    } : null;
+
     // Show alerts after data is loaded
     if (missingBefore.length > 0) {
-      this.showAlert('進貨提醒', `本周 ${missingBefore.join('、')} 無進貨紀錄，是否忘記輸入？`);
-    }
-
-    if (sameDayMissing) {
-      const todayLabel = `週${dayNames[sameDayMissing.date.getDay()]}`;
-      // Use setTimeout so it shows after the first alert (if any)
-      const showSameDayAlert = () => {
-        this.showConfirm(
-          '進貨提醒',
-          `今天（${todayLabel}）是進貨日但無進貨紀錄，是否現在輸入？`,
-          () => { this.activeTab.set('purchase'); },
-        );
-      };
-      if (missingBefore.length > 0) {
-        setTimeout(showSameDayAlert, 300);
-      } else {
-        showSameDayAlert();
-      }
+      const labels = missingBefore.map(m => m.label).join('、');
+      this.showConfirm(
+        '進貨提醒',
+        `本周 ${labels} 無進貨紀錄，是否忘記輸入？`,
+        // 是 → 跳到進貨紀錄頁面手動輸入
+        () => {
+          this.activeTab.set('purchase');
+          if (showSameDayAlert) setTimeout(showSameDayAlert, 300);
+        },
+        // 否 → 詢問是否以預定到貨量自動建立
+        () => {
+          this.showConfirm(
+            '進貨提醒',
+            '是否以預定到貨量紀錄？',
+            // 是 → 從上次訂單自動建立進貨紀錄
+            () => { this.autoFillFromLastOrder(missingBefore, fmt); },
+            // 否 → 不帶入，繼續
+            () => { if (showSameDayAlert) showSameDayAlert(); },
+          );
+        }
+      );
+    } else if (showSameDayAlert) {
+      showSameDayAlert();
     }
   }
 
@@ -1352,6 +1367,67 @@ export class InventoryComponent implements OnInit {
     const pad = (n: number) => String(n).padStart(2, '0');
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     return { start: fmt(monday), end: fmt(sunday) };
+  }
+
+  private async autoFillFromLastOrder(
+    missingDays: { date: Date; label: string }[],
+    fmt: (d: Date) => string
+  ): Promise<void> {
+    try {
+      const db = this.firebaseService.db;
+      const currentWeek = this.weeklyFilter.week;
+      const orderDoc = await getDoc(doc(db, 'inventory_orders', currentWeek));
+
+      if (!orderDoc.exists()) {
+        this.showAlert('提示', '找不到上次訂單資料，無法自動填入。');
+        return;
+      }
+
+      const orderData = orderDoc.data() as any;
+      const orderItems: { category: string; item: string; grid: number[] }[] = orderData.items || [];
+      const currentUser = this.authService.currentUser();
+      let createdCount = 0;
+
+      for (const missingDay of missingDays) {
+        // Monday=1 → grid[0], Wednesday=3 → grid[2]
+        const gridIndex = missingDay.date.getDay() - 1;
+
+        for (const orderItem of orderItems) {
+          const qty = orderItem.grid[gridIndex] || 0;
+          if (qty <= 0) continue;
+
+          const unitsPerBox = this.getUnitsPerBox(orderItem.category, orderItem.item);
+          const boxQuantity = unitsPerBox > 1 ? Math.ceil(qty / unitsPerBox) : qty;
+          const quantity = boxQuantity * unitsPerBox;
+
+          const purchaseDate = new Date(fmt(missingDay.date) + 'T09:00:00');
+
+          await addDoc(collection(db, 'inventory_purchases'), {
+            date: Timestamp.fromDate(purchaseDate),
+            category: orderItem.category,
+            item: orderItem.item,
+            boxQuantity,
+            quantity,
+            unitsPerBox,
+            createdBy: currentUser?.name || '未知',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          createdCount++;
+        }
+      }
+
+      if (createdCount > 0) {
+        await this.fetchPurchases();
+        await this.loadWeeklyData();
+        this.showAlert('操作成功', `已自動建立 ${createdCount} 筆進貨紀錄`);
+      } else {
+        this.showAlert('提示', '訂單中無對應的到貨量資料。');
+      }
+    } catch (error: any) {
+      console.error('自動建立進貨紀錄失敗:', error);
+      this.showAlert('操作失敗', error.message);
+    }
   }
 
   async saveWeeklyCount(): Promise<void> {
@@ -1463,7 +1539,7 @@ export class InventoryComponent implements OnInit {
     this.showOrderPreview.set(true);
   }
 
-  confirmExportOrder(): void {
+  async confirmExportOrder(): Promise<void> {
     const rows: any[][] = [];
 
     // Row 1: Order date
@@ -1514,6 +1590,34 @@ export class InventoryComponent implements OnInit {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
+
+    // Save order to Firestore for auto-fill lookup
+    try {
+      const db = this.firebaseService.db;
+      const currentUser = this.authService.currentUser();
+      const { start: weekStart } = this.getWeekDateRange(this.weeklyFilter.week);
+      const targetMonday = new Date(weekStart);
+      targetMonday.setDate(targetMonday.getDate() + 7);
+      const targetWeek = this.getISOWeek(targetMonday);
+
+      const orderItems = this.orderPreviewItems.map(entry => ({
+        category: entry.category,
+        item: entry.item,
+        hospitalCode: entry.hospitalCode,
+        grid: this.orderPreviewGrid[`${entry.category}|${entry.item}`] || [0, 0, 0, 0, 0, 0],
+      }));
+
+      await setDoc(doc(db, 'inventory_orders', targetWeek), {
+        orderDate: this.orderDate,
+        targetWeek,
+        sourceWeek: this.weeklyFilter.week,
+        items: orderItems,
+        createdBy: currentUser?.name || '未知',
+        createdAt: Timestamp.now(),
+      });
+    } catch (error: any) {
+      console.error('儲存訂單資料失敗:', error);
+    }
 
     this.showOrderPreview.set(false);
     this.showAlert('匯出成功', '訂單已下載');
