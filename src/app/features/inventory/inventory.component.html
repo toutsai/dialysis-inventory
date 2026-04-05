@@ -68,13 +68,13 @@
               <h4 class="dash-category-title">{{ CATEGORY_NAMES[category] }}</h4>
               <div class="dash-cards-grid">
                 @for (item of getDashboardItemsByCategory(category); track item.itemName) {
-                  <div class="dash-card" [class.dash-card-safe]="item.status === 'safe'" [class.dash-card-warning]="item.status === 'warning'" [class.dash-card-danger]="item.status === 'danger'" [class.dash-card-critical]="item.status === 'critical'">
+                  <div class="dash-card" [class.dash-card-safe]="item.status === 'safe'" [class.dash-card-warning]="item.status === 'warning'" [class.dash-card-low]="item.status === 'low'" [class.dash-card-critical]="item.status === 'critical'">
                     <div class="dash-card-header">
                       <span class="dash-card-name">{{ item.itemName }}</span>
-                      <span class="status-dot" [class.dot-safe]="item.status === 'safe'" [class.dot-warning]="item.status === 'warning'" [class.dot-danger]="item.status === 'danger'" [class.dot-critical]="item.status === 'critical'"></span>
+                      <span class="status-dot" [class.dot-safe]="item.status === 'safe'" [class.dot-warning]="item.status === 'warning'" [class.dot-low]="item.status === 'low'" [class.dot-critical]="item.status === 'critical'"></span>
                     </div>
                     <div class="dash-card-stock">{{ item.estimatedStock }}</div>
-                    <div class="dash-card-safe-level">安全庫存：{{ item.safeLevel > 0 ? item.safeLevel : '-' }}</div>
+                    <div class="dash-card-safe-level">安全庫存：{{ item.autoSafeLevel > 0 ? item.autoSafeLevel : '-' }} ｜ 最低：{{ item.minStockLevel > 0 ? item.minStockLevel : '-' }}</div>
                     @if (item.dailyUsage > 0) {
                       <div class="dash-card-detail">日均：{{ item.dailyUsage }} ｜ 昨日消耗：{{ item.todayConsumption }} ｜ 餘：{{ item.remainingAfterToday }}</div>
                     }
@@ -153,7 +153,7 @@
                 <th>品項名稱</th>
                 <th>院內代碼</th>
                 <th>每箱個數</th>
-                <th>安全庫存量</th>
+                <th>最低庫存量</th>
                 <th>廠牌</th>
                 <th>廠商聯絡電話</th>
                 <th>操作</th>
@@ -880,7 +880,7 @@
           <input type="number" [(ngModel)]="itemForm.unitsPerBox" placeholder="例如：20" min="1" />
         </div>
         <div class="form-field">
-          <label>安全庫存量</label>
+          <label>最低庫存量</label>
           <input type="number" [(ngModel)]="itemForm.safeInventoryLevel" placeholder="例如：100" min="0" />
         </div>
         <div class="form-field">
