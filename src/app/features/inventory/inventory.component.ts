@@ -52,6 +52,9 @@ export class InventoryComponent implements OnInit {
   isAlertDialogVisible = signal(false);
   alertDialogTitle = signal('');
   alertDialogMessage = signal('');
+  alertDialogShowCancel = signal(false);
+  private alertDialogOnConfirm: (() => void) | null = null;
+  private alertDialogOnCancel: (() => void) | null = null;
 
   // ==================== Tab 0: 品項設定 ====================
   inventoryItems = signal<any[]>([]);
@@ -148,6 +151,11 @@ export class InventoryComponent implements OnInit {
     dialysateCa: {},
     bicarbonateType: {},
   };
+  weeklyPendingPurchases: Record<string, Record<string, number>> = {
+    artificialKidney: {},
+    dialysateCa: {},
+    bicarbonateType: {},
+  };
 
   // Order preview modal
   showOrderPreview = signal(false);
@@ -177,7 +185,7 @@ export class InventoryComponent implements OnInit {
       endDate: defaults.lastDay,
     };
     this.weeklyFilter = {
-      countDate: this.getThisTuesday(),
+      countDate: this.getDefaultCountDate(),
       week: this.getISOWeek(new Date()),
     };
   }
@@ -784,7 +792,33 @@ export class InventoryComponent implements OnInit {
   showAlert(title: string, message: string): void {
     this.alertDialogTitle.set(title);
     this.alertDialogMessage.set(message);
+    this.alertDialogShowCancel.set(false);
+    this.alertDialogOnConfirm = null;
+    this.alertDialogOnCancel = null;
     this.isAlertDialogVisible.set(true);
+  }
+
+  showConfirm(title: string, message: string, onConfirm: () => void, onCancel?: () => void): void {
+    this.alertDialogTitle.set(title);
+    this.alertDialogMessage.set(message);
+    this.alertDialogShowCancel.set(true);
+    this.alertDialogOnConfirm = onConfirm;
+    this.alertDialogOnCancel = onCancel || null;
+    this.isAlertDialogVisible.set(true);
+  }
+
+  onAlertConfirm(): void {
+    this.isAlertDialogVisible.set(false);
+    if (this.alertDialogOnConfirm) {
+      this.alertDialogOnConfirm();
+    }
+  }
+
+  onAlertCancel(): void {
+    this.isAlertDialogVisible.set(false);
+    if (this.alertDialogOnCancel) {
+      this.alertDialogOnCancel();
+    }
   }
 
   // dailyGrid[category:item][day] = count
@@ -1097,19 +1131,8 @@ export class InventoryComponent implements OnInit {
 
   // ==================== Tab 4 Methods ====================
 
-  private getThisTuesday(): string {
-    const today = new Date();
-    const day = today.getDay();
-    if (day === 2) {
-      return today.toISOString().slice(0, 10);
-    }
-    const tuesday = new Date(today);
-    if (day > 2) {
-      tuesday.setDate(today.getDate() - (day - 2));
-    } else {
-      tuesday.setDate(today.getDate() + (2 - day));
-    }
-    return tuesday.toISOString().slice(0, 10);
+  private getDefaultCountDate(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 
   private getISOWeek(date: Date): string {
@@ -1147,6 +1170,7 @@ export class InventoryComponent implements OnInit {
       this.weeklyCount[category] = {};
       this.weeklyCountBoxes[category] = {};
       this.monthlyConsumptionForWeekly[category] = {};
+      this.weeklyPendingPurchases[category] = {};
     }
 
     try {
@@ -1173,7 +1197,7 @@ export class InventoryComponent implements OnInit {
       }
 
       // Use consumption engine for LAST week (Mon-Sat) to calculate daily average
-      const { start: weekStart, end: weekEnd } = this.getWeekDateRange(this.weeklyFilter.week);
+      const { start: weekStart } = this.getWeekDateRange(this.weeklyFilter.week);
       // Last week = selected week - 7 days
       const lastMonday = new Date(weekStart);
       lastMonday.setDate(lastMonday.getDate() - 7);
@@ -1189,6 +1213,36 @@ export class InventoryComponent implements OnInit {
       for (const category of Object.keys(this.monthlyConsumptionForWeekly)) {
         this.monthlyConsumptionForWeekly[category] = result.grouped[category] || {};
       }
+
+      // Query pending purchases: after countDate to end of week (Saturday)
+      const countDate = this.weeklyFilter.countDate;
+      const countDateObj = new Date(countDate);
+      const saturday = new Date(weekStart);
+      saturday.setDate(saturday.getDate() + 5); // Saturday of selected week
+
+      if (countDateObj < saturday) {
+        const nextDay = new Date(countDateObj);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const pendingQuery = query(
+          collection(db, 'inventory_purchases'),
+          where('date', '>=', Timestamp.fromDate(new Date(fmt(nextDay) + 'T00:00:00'))),
+          where('date', '<=', Timestamp.fromDate(new Date(fmt(saturday) + 'T23:59:59')))
+        );
+        const pendingSnap = await getDocs(pendingQuery);
+        pendingSnap.forEach((d) => {
+          const p = d.data() as any;
+          if (p.category && p.item && p.quantity) {
+            if (!this.weeklyPendingPurchases[p.category]) {
+              this.weeklyPendingPurchases[p.category] = {};
+            }
+            this.weeklyPendingPurchases[p.category][p.item] =
+              (this.weeklyPendingPurchases[p.category][p.item] || 0) + p.quantity;
+          }
+        });
+      }
+
+      // Check delivery days (Mon=1, Wed=3) for missing purchase records
+      await this.checkDeliveryDayPurchases(db, countDateObj, weekStart, fmt);
 
       // Ensure all known items have entries
       for (const category of Object.keys(this.knownItems)) {
@@ -1208,6 +1262,73 @@ export class InventoryComponent implements OnInit {
       this.showAlert('載入失敗', error.message);
     } finally {
       this.weeklyLoading.set(false);
+    }
+  }
+
+  private async checkDeliveryDayPurchases(
+    db: any,
+    countDateObj: Date,
+    weekStart: string,
+    fmt: (d: Date) => string
+  ): Promise<void> {
+    const monday = new Date(weekStart);
+    const wednesday = new Date(weekStart);
+    wednesday.setDate(monday.getDate() + 2);
+    const deliveryDays = [
+      { date: monday, label: '週一' },
+      { date: wednesday, label: '週三' },
+    ];
+    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+
+    const countDay = countDateObj.getTime();
+    const missingBefore: string[] = [];
+    let sameDayMissing: { date: Date; label: string } | null = null;
+
+    for (const dd of deliveryDays) {
+      const ddTime = dd.date.getTime();
+      if (ddTime > countDay) continue; // Scenario C: after count date, handled by pending query
+
+      // Check if there are any purchases on this delivery day
+      const dayStart = new Date(fmt(dd.date) + 'T00:00:00');
+      const dayEnd = new Date(fmt(dd.date) + 'T23:59:59');
+      const dayQuery = query(
+        collection(db, 'inventory_purchases'),
+        where('date', '>=', Timestamp.fromDate(dayStart)),
+        where('date', '<=', Timestamp.fromDate(dayEnd))
+      );
+      const daySnap = await getDocs(dayQuery);
+
+      if (daySnap.empty) {
+        if (ddTime === countDay) {
+          // Scenario B: count date IS the delivery day
+          sameDayMissing = dd;
+        } else {
+          // Scenario A: delivery day before count date
+          missingBefore.push(dd.label);
+        }
+      }
+    }
+
+    // Show alerts after data is loaded
+    if (missingBefore.length > 0) {
+      this.showAlert('進貨提醒', `本周 ${missingBefore.join('、')} 無進貨紀錄，是否忘記輸入？`);
+    }
+
+    if (sameDayMissing) {
+      const todayLabel = `週${dayNames[sameDayMissing.date.getDay()]}`;
+      // Use setTimeout so it shows after the first alert (if any)
+      const showSameDayAlert = () => {
+        this.showConfirm(
+          '進貨提醒',
+          `今天（${todayLabel}）是進貨日但無進貨紀錄，是否現在輸入？`,
+          () => { this.activeTab.set('purchase'); },
+        );
+      };
+      if (missingBefore.length > 0) {
+        setTimeout(showSameDayAlert, 300);
+      } else {
+        showSameDayAlert();
+      }
     }
   }
 
@@ -1283,8 +1404,12 @@ export class InventoryComponent implements OnInit {
   getOrderQuantity(category: string, item: string): number {
     const safetyStock = this.getSafetyStock(category, item);
     const currentStock = this.weeklyCount[category]?.[item] || 0;
-    // 訂購量 = 安全庫存 - 週二盤點
-    return Math.max(0, safetyStock - currentStock);
+    const pending = this.weeklyPendingPurchases[category]?.[item] || 0;
+    return Math.max(0, safetyStock - currentStock - pending);
+  }
+
+  getPendingPurchase(category: string, item: string): number {
+    return this.weeklyPendingPurchases[category]?.[item] || 0;
   }
 
   exportWeeklyOrder(): void {
