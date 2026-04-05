@@ -1728,12 +1728,25 @@ export class InventoryComponent implements OnInit {
   }
 
   loadMonthlyHistoryRecord(record: any): void {
-    // Set the filter to match the historical record's dates
     this.monthlyFilter.countDate = record.countDate || '';
     this.monthlyFilter.startDate = record.startDate || '';
     this.monthlyFilter.endDate = record.endDate || '';
-    // Use existing loadSavedMonthlyCount to populate the table
     this.loadSavedMonthlyCount();
+  }
+
+  getGridTotal(grid: number[] | undefined): number {
+    return (grid || []).reduce((s: number, v: number) => s + (v || 0), 0);
+  }
+
+  getHistoryCountEntries(record: any): { key: string; category: string; item: string; qty: number }[] {
+    const counts = record.counts || {};
+    const entries: { key: string; category: string; item: string; qty: number }[] = [];
+    for (const category of Object.keys(CATEGORY_NAMES)) {
+      for (const [item, qty] of Object.entries(counts[category] || {})) {
+        entries.push({ key: `${category}:${item}`, category, item, qty: qty as number });
+      }
+    }
+    return entries;
   }
 
   getHospitalCode(category: string, itemName: string): string {

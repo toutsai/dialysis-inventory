@@ -500,16 +500,40 @@
           </button>
         </div>
         @if (monthlyHistory().length > 0) {
-          <div class="history-list">
+          <div class="daily-grid-container">
             @for (record of monthlyHistory(); track record.id) {
-              <div class="history-item">
-                <div class="history-item-header">
-                  <span class="history-date">{{ record.countDate }}</span>
-                  <span class="history-label">區間：{{ record.startDate }} ~ {{ record.endDate }}</span>
-                  <span class="history-meta">{{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}</span>
-                  <button class="btn-sm btn-secondary" (click)="loadMonthlyHistoryRecord(record); $event.stopPropagation()">載入</button>
+              <div class="daily-category-section">
+                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>
+                    盤點日：{{ record.countDate }}
+                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
+                      區間：{{ record.startDate }} ~ {{ record.endDate }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
+                    </span>
+                  </span>
+                  <button class="btn-sm btn-secondary" (click)="loadMonthlyHistoryRecord(record); $event.stopPropagation()">載入此紀錄</button>
+                </h4>
+                <div class="daily-table-wrapper">
+                  <table class="daily-grid-table">
+                    <thead>
+                      <tr>
+                        <th class="sticky-item-col">類別</th>
+                        <th>品項</th>
+                        <th>期末結存(個)</th>
+                        <th>期末結存(箱)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (entry of getHistoryCountEntries(record); track entry.key) {
+                        <tr>
+                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
+                          <td>{{ entry.item }}</td>
+                          <td class="has-value">{{ entry.qty }}</td>
+                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
-                <div class="history-item-summary">{{ getMonthlyCountSummary(record) }}</div>
               </div>
             }
           </div>
@@ -645,45 +669,49 @@
           </button>
         </div>
         @if (orderHistory().length > 0) {
-          <div class="history-list">
+          <div class="daily-grid-container">
             @for (order of orderHistory(); track order.id) {
-              <div class="history-item" (click)="toggleOrderDetail(order.id)">
-                <div class="history-item-header">
-                  <span class="history-date">{{ order.orderDate }}</span>
-                  <span class="history-label">目標週次：{{ order.targetWeek }}</span>
-                  <span class="history-meta">{{ order.createdBy }} · {{ formatTimestamp(order.createdAt) }}</span>
-                  <span class="history-toggle">{{ expandedOrderId() === order.id ? '▲' : '▼' }}</span>
-                </div>
-                <div class="history-item-summary">{{ getOrderItemSummary(order) }}</div>
-              </div>
-              @if (expandedOrderId() === order.id) {
-                <div class="history-detail">
-                  <table>
+              <div class="daily-category-section">
+                <h4 class="daily-category-title">
+                  {{ order.orderDate }} 訂單
+                  <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
+                    目標週次：{{ order.targetWeek }} ｜ {{ order.createdBy }} · {{ formatTimestamp(order.createdAt) }}
+                  </span>
+                </h4>
+                <div class="daily-table-wrapper">
+                  <table class="daily-grid-table">
                     <thead>
                       <tr>
-                        <th>類別</th>
+                        <th class="sticky-item-col">類別</th>
                         <th>品項</th>
                         <th>院內代碼</th>
-                        <th>週一</th>
-                        <th>週三</th>
-                        <th>合計</th>
+                        <th class="has-data">週一</th>
+                        <th>週二</th>
+                        <th class="has-data">週三</th>
+                        <th>週四</th>
+                        <th>週五</th>
+                        <th>週六</th>
+                        <th class="total-col">合計</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (item of order.items; track item.item) {
                         <tr>
-                          <td>{{ CATEGORY_NAMES[item.category] || item.category }}</td>
+                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[item.category] || item.category }}</td>
                           <td>{{ item.item }}</td>
                           <td>{{ item.hospitalCode }}</td>
-                          <td>{{ item.grid?.[0] || 0 }}</td>
-                          <td>{{ item.grid?.[2] || 0 }}</td>
-                          <td><strong>{{ (item.grid?.[0] || 0) + (item.grid?.[2] || 0) }}</strong></td>
+                          @for (val of item.grid || [0,0,0,0,0,0]; track $index) {
+                            <td [class.has-value]="val > 0" [class.has-data]="$index === 0 || $index === 2">
+                              {{ val || '' }}
+                            </td>
+                          }
+                          <td class="total-col total-value">{{ getGridTotal(item.grid) }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
-              }
+              </div>
             }
           </div>
         }
