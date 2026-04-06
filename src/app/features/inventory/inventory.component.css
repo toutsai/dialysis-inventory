@@ -1128,7 +1128,7 @@ tfoot tr:first-child td {
 
 /* === Order Preview Modal === */
 .modal-wide {
-  max-width: 900px !important;
+  max-width: 1200px !important;
   width: 95vw;
 }
 
