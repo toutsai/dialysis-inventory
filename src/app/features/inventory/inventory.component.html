@@ -439,6 +439,46 @@
           </div>
         </div>
 
+        <!-- 月盤點輸入區 (放在表格上方) -->
+        <div class="monthly-count-section">
+          <div class="section-header">
+            <h4>月盤點輸入 ({{ monthlyFilter.countDate }})</h4>
+            <button class="btn-sm btn-primary" (click)="saveMonthlyCount()" [disabled]="monthlyLoading()">
+              儲存盤點結果
+            </button>
+          </div>
+          <div class="inventory-grid">
+            @for (category of categoryKeys; track category) {
+              <div class="category-section">
+                <h5>{{ CATEGORY_NAMES[category] }}</h5>
+                <div class="item-inputs">
+                  @for (item of getItemsForCategory(category); track item) {
+                    <div class="item-row">
+                      <label>{{ item }}</label>
+                      <div class="box-input-group">
+                        <input
+                          type="number"
+                          [(ngModel)]="monthlyActualCountBoxes[category][item]"
+                          (ngModelChange)="syncMonthlyActualCount()"
+                          placeholder="箱數"
+                          min="0"
+                          class="box-input"
+                        />
+                        <span class="box-unit">箱</span>
+                        @if (monthlyActualCountBoxes[category]?.[item]) {
+                          <span class="unit-hint">
+                            = {{ calculateMonthlyActualUnits(category, item) }} 個
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
         <div class="table-container">
           <table>
             <thead>
@@ -522,46 +562,6 @@
               }
             </tbody>
           </table>
-        </div>
-
-        <!-- 月盤點輸入區 -->
-        <div class="monthly-count-section">
-          <div class="section-header">
-            <h4>月盤點輸入 ({{ monthlyFilter.countDate }})</h4>
-            <button class="btn-sm btn-primary" (click)="saveMonthlyCount()" [disabled]="monthlyLoading()">
-              儲存盤點結果
-            </button>
-          </div>
-          <div class="inventory-grid">
-            @for (category of categoryKeys; track category) {
-              <div class="category-section">
-                <h5>{{ CATEGORY_NAMES[category] }}</h5>
-                <div class="item-inputs">
-                  @for (item of getItemsForCategory(category); track item) {
-                    <div class="item-row">
-                      <label>{{ item }}</label>
-                      <div class="box-input-group">
-                        <input
-                          type="number"
-                          [(ngModel)]="monthlyActualCountBoxes[category][item]"
-                          (ngModelChange)="syncMonthlyActualCount()"
-                          placeholder="箱數"
-                          min="0"
-                          class="box-input"
-                        />
-                        <span class="box-unit">箱</span>
-                        @if (monthlyActualCountBoxes[category]?.[item]) {
-                          <span class="unit-hint">
-                            = {{ calculateMonthlyActualUnits(category, item) }} 個
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
         </div>
       } @else {
         <div class="placeholder-text">請選擇月份並點擊「計算庫存」。</div>
