@@ -9,7 +9,7 @@ import { AuthService } from '@services/auth.service';
   template: `
     <div class="layout-container">
       <header class="app-header">
-        <h1 class="app-title">庫存管理系統</h1>
+        <h1 class="app-title">部北洗腎室庫存管理平台</h1>
         <div class="header-right">
           @if (authService.currentUser(); as user) {
             <span class="user-name">{{ user.name }}</span>
