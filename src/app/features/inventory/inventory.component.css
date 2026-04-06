@@ -78,12 +78,14 @@
 
 /* === 手機版：側邊欄改為頂部橫列 === */
 @media (max-width: 768px) {
+  /* --- Layout --- */
   .page-container {
     flex-direction: column;
     height: auto;
     min-height: 100vh;
   }
 
+  /* --- Sidebar → 横向 Tab Bar --- */
   .sidebar {
     width: 100%;
     flex-direction: row;
@@ -114,6 +116,162 @@
 
   .nav-icon {
     display: none;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* --- Tab Panel --- */
+  .tab-panel {
+    padding: 0.75rem !important;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.5rem;
+  }
+
+  .panel-header h3 {
+    font-size: 1.1rem;
+  }
+
+  /* --- Filter / Search Bars --- */
+  .filter-bar,
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .filter-field {
+    width: 100%;
+  }
+
+  .filter-field input,
+  .filter-field select {
+    min-width: auto !important;
+    width: 100% !important;
+  }
+
+  .filter-bar .btn-primary,
+  .filter-bar .btn-secondary,
+  .filter-bar .btn-success,
+  .search-controls .btn-primary,
+  .search-controls .btn-success {
+    width: 100%;
+  }
+
+  /* --- Dashboard Cards --- */
+  .dash-cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .dash-card {
+    padding: 0.6rem !important;
+  }
+
+  .dash-card-stock {
+    font-size: 1.5rem !important;
+  }
+
+  /* --- Weekly Order: 盤點輸入 --- */
+  .inventory-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .item-row {
+    padding: 0.4rem 0;
+  }
+
+  .item-row label {
+    font-size: 0.95rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .box-input {
+    width: 80px !important;
+    height: 42px !important;
+    font-size: 1.1rem !important;
+  }
+
+  .box-unit {
+    font-size: 1rem;
+  }
+
+  .unit-hint {
+    font-size: 0.8rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.5rem;
+  }
+
+  .section-header .btn-sm,
+  .section-header .btn-primary,
+  .section-header .btn-success {
+    width: 100%;
+  }
+
+  /* --- Monthly Summary Cards --- */
+  .monthly-summary {
+    flex-direction: column;
+  }
+
+  .summary-card .operator {
+    position: static;
+    transform: none;
+    display: block;
+    text-align: center;
+    margin: -0.5rem 0;
+  }
+
+  /* --- Tables --- */
+  .table-container {
+    margin: 0 -0.75rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .adjustment-input {
+    width: 70px;
+    height: 40px !important;
+    font-size: 1rem !important;
+  }
+
+  /* --- Sub-tabs --- */
+  .sub-tabs {
+    width: 100%;
+  }
+
+  .sub-tabs button {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* --- Modals --- */
+  .modal-content {
+    width: 95vw !important;
+    max-width: none !important;
+    max-height: 90vh;
+    margin: 1rem;
+  }
+
+  .modal-wide {
+    max-width: none !important;
+  }
+
+  /* --- Order Preview Modal --- */
+  .order-cell-input {
+    width: 55px !important;
+    font-size: 1rem !important;
+    height: 40px !important;
   }
 }
 
