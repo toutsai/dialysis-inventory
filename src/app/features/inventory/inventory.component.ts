@@ -142,6 +142,7 @@ export class InventoryComponent implements OnInit {
     dialysateCa: {},
     bicarbonateType: {},
   };
+  monthlySubTab = signal<'input' | 'table'>('input');
 
   // ==================== Tab 4: 每週訂單 ====================
   weeklyLoading = signal(false);
