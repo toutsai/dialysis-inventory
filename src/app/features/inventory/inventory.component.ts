@@ -1555,8 +1555,7 @@ export class InventoryComponent implements OnInit {
 
     for (const category of orderCategories) {
       for (const item of this.getItemsForCategory(category)) {
-        const orderQty = this.getOrderQuantity(category, item);
-        if (orderQty <= 0) continue;
+        const orderQty = Math.max(0, this.getOrderQuantity(category, item));
 
         const key = `${category}|${item}`;
         const label = `${CATEGORY_NAMES[category]} - ${item}`;
