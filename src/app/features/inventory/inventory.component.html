@@ -841,8 +841,6 @@
       @if (historySubTab() === 'weeklyCounts') {
         @if (historyWeeklyCountsLoading()) {
           <div class="loading-state">載入週盤點紀錄中...</div>
-        } @else if (historyWeeklyCountRecords().length === 0) {
-          <div class="placeholder-text">尚無此月份的週盤點紀錄。請選擇月份並點擊查詢。</div>
         } @else {
           <div class="daily-grid-container">
             @for (category of categoryKeys; track category) {
@@ -854,8 +852,10 @@
                       <thead>
                         <tr>
                           <th class="sticky-item-col">品項</th>
-                          @for (week of getWeeklyCountColumns(); track week) {
-                            <th class="has-data">{{ week }}</th>
+                          @for (col of getWeeklyCountColumns(); track col.weekLabel) {
+                            <th [class.has-data]="col.countDate !== null" style="white-space: pre-line; min-width: 80px;">
+                              {{ col.weekLabel }}
+                            </th>
                           }
                         </tr>
                       </thead>
@@ -863,9 +863,9 @@
                         @for (item of getWeeklyCountItemsByCategory(category); track item) {
                           <tr>
                             <td class="sticky-item-col item-name">{{ item }}</td>
-                            @for (week of getWeeklyCountColumns(); track week) {
-                              <td class="day-cell" [class.has-value]="getWeeklyCountValue(category, item, week) !== null">
-                                {{ getWeeklyCountValue(category, item, week) ?? '' }}
+                            @for (col of getWeeklyCountColumns(); track col.weekLabel) {
+                              <td class="day-cell" [class.has-value]="getWeeklyCountValueByDate(category, item, col.countDate) !== null">
+                                {{ getWeeklyCountValueByDate(category, item, col.countDate) ?? '' }}
                               </td>
                             }
                           </tr>

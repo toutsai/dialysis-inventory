@@ -2030,15 +2030,58 @@ export class InventoryComponent implements OnInit {
   }
 
   // 週盤點紀錄一覽表 helpers
-  getWeeklyCountColumns(): string[] {
+  // 產生該月的所有週欄位（以每週一為基準，約 4-5 週）
+  getWeeklyCountColumns(): { weekLabel: string; countDate: string | null }[] {
+    const [y, m] = this.historyMonth.split('-').map(Number);
+    const firstDay = new Date(y, m - 1, 1);
+    const lastDay = new Date(y, m, 0);
     const records = this.historyWeeklyCountRecords();
-    const weeks = records.map((r: any) => r.week || r.id).filter(Boolean);
-    return [...new Set(weeks)].sort();
+
+    // 計算該月有幾個「週」 — 以每週一開始算
+    const weeks: { weekLabel: string; countDate: string | null }[] = [];
+    let weekNum = 1;
+
+    // 找出每個週一
+    const d = new Date(firstDay);
+    // 回到第一個週一（如果1號不是週一，從1號所在的那週算起）
+    const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon
+    // 不往前推，直接從月初開始，按7天分割
+    const current = new Date(firstDay);
+    while (current <= lastDay) {
+      const weekStart = new Date(current);
+      const weekEnd = new Date(current);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      if (weekEnd > lastDay) weekEnd.setTime(lastDay.getTime());
+
+      const startStr = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+      const endStr = `${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
+      const label = `第${weekNum}週\n${startStr}-${endStr}`;
+
+      // 找該週有沒有盤點紀錄（countDate 落在這個區間內）
+      const wsDate = this.toTaiwanDate(weekStart);
+      const weDate = this.toTaiwanDate(weekEnd);
+      const matchedRecord = records.find((r: any) => {
+        const cd = r.countDate;
+        return cd && cd >= wsDate && cd <= weDate;
+      });
+
+      weeks.push({
+        weekLabel: label,
+        countDate: matchedRecord?.countDate || null,
+      });
+
+      current.setDate(current.getDate() + 7);
+      weekNum++;
+    }
+
+    return weeks;
   }
 
   getWeeklyCountItemsByCategory(category: string): string[] {
     const records = this.historyWeeklyCountRecords();
     const items = new Set<string>();
+    // 也從 knownItems 取得
+    (this.knownItems[category] || []).forEach((item: string) => items.add(item));
     records.forEach((r: any) => {
       const counts = r.counts?.[category] || {};
       Object.keys(counts).forEach(item => items.add(item));
@@ -2046,9 +2089,10 @@ export class InventoryComponent implements OnInit {
     return [...items].sort();
   }
 
-  getWeeklyCountValue(category: string, item: string, weekId: string): number | null {
+  getWeeklyCountValueByDate(category: string, item: string, countDate: string | null): number | null {
+    if (!countDate) return null;
     const records = this.historyWeeklyCountRecords();
-    const record = records.find((r: any) => (r.week || r.id) === weekId);
+    const record = records.find((r: any) => r.countDate === countDate);
     if (!record) return null;
     return record.counts?.[category]?.[item] ?? null;
   }
