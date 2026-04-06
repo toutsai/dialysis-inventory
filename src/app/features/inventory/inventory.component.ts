@@ -186,6 +186,7 @@ export class InventoryComponent implements OnInit {
   // ==================== Tab: 訂單與盤點紀錄 ====================
   historySubTab = signal<'orders' | 'counts' | 'weeklyCounts'>('orders');
   historyMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7);
+  historyYear = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 4);
   historyOrderRecords = signal<any[]>([]);
   historyCountRecords = signal<any[]>([]);
   historyWeeklyCountRecords = signal<any[]>([]);
@@ -1882,24 +1883,18 @@ export class InventoryComponent implements OnInit {
     this.historyCountsLoading.set(true);
     try {
       const db = this.firebaseService.db;
-      const month = this.historyMonth;
+      const year = this.historyYear;
 
-      // Try direct document lookup by ID (YYYY-MM)
-      const docSnap = await getDoc(doc(db, 'inventory_counts', month));
-      if (docSnap.exists()) {
-        this.historyCountRecords.set([{ id: docSnap.id, ...docSnap.data() }]);
-      } else {
-        // Fallback: query by countDate range
-        const q = query(
-          collection(db, 'inventory_counts'),
-          where('type', '==', 'monthly'),
-          where('countDate', '>=', `${month}-01`),
-          where('countDate', '<=', `${month}-31`),
-          orderBy('countDate', 'desc')
-        );
-        const snap = await getDocs(q);
-        this.historyCountRecords.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Load all 12 months for the selected year
+      const records: any[] = [];
+      for (let m = 1; m <= 12; m++) {
+        const monthKey = `${year}-${String(m).padStart(2, '0')}`;
+        const docSnap = await getDoc(doc(db, 'inventory_counts', monthKey));
+        if (docSnap.exists()) {
+          records.push({ id: docSnap.id, ...docSnap.data() });
+        }
       }
+      this.historyCountRecords.set(records);
     } catch (error: any) {
       console.error('載入歷史盤點失敗:', error);
     } finally {
@@ -1990,6 +1985,48 @@ export class InventoryComponent implements OnInit {
     const expected = record.expectedCounts?.[entry.category]?.[entry.item] ?? entry.qty;
     const variance = Math.abs(actual - expected);
     return variance > Math.max(1, Math.abs(expected) * 0.01);
+  }
+
+  // 月盤點紀錄一覽表 helpers (整年 12 個月)
+  getMonthlyCountMonths(): string[] {
+    const months: string[] = [];
+    for (let m = 1; m <= 12; m++) {
+      months.push(`${this.historyYear}-${String(m).padStart(2, '0')}`);
+    }
+    return months;
+  }
+
+  getMonthlyCountItemsByCategory(category: string): string[] {
+    const records = this.historyCountRecords();
+    const items = new Set<string>();
+    records.forEach((r: any) => {
+      const counts = r.counts?.[category] || {};
+      Object.keys(counts).forEach(item => items.add(item));
+    });
+    return [...items].sort();
+  }
+
+  getMonthlyCountValue(category: string, item: string, monthKey: string): number | null {
+    const records = this.historyCountRecords();
+    const record = records.find((r: any) => r.id === monthKey);
+    if (!record) return null;
+    return record.counts?.[category]?.[item] ?? null;
+  }
+
+  getMonthlyCountRowTotal(category: string, item: string): number {
+    return this.getMonthlyCountMonths().reduce((sum, month) => {
+      const val = this.getMonthlyCountValue(category, item, month);
+      return sum + (val || 0);
+    }, 0);
+  }
+
+  getMonthLabel(monthKey: string): string {
+    return parseInt(monthKey.split('-')[1], 10) + '月';
+  }
+
+  hasMonthlyCountData(monthKey: string): boolean {
+    const records = this.historyCountRecords();
+    return records.some((r: any) => r.id === monthKey);
   }
 
   // 週盤點紀錄一覽表 helpers

@@ -719,12 +719,19 @@
       </div>
 
       <div class="search-controls">
-        <div class="search-field">
-          <label>選擇月份</label>
-          <input type="month" [(ngModel)]="historyMonth" />
-        </div>
-        <button class="btn-primary" (click)="loadHistoryData()" [disabled]="historyOrdersLoading() || historyCountsLoading()">
-          {{ (historyOrdersLoading() || historyCountsLoading()) ? '載入中...' : '查詢' }}
+        @if (historySubTab() === 'counts') {
+          <div class="search-field">
+            <label>選擇年份</label>
+            <input type="number" [(ngModel)]="historyYear" min="2020" max="2099" style="width: 120px;" />
+          </div>
+        } @else {
+          <div class="search-field">
+            <label>選擇月份</label>
+            <input type="month" [(ngModel)]="historyMonth" />
+          </div>
+        }
+        <button class="btn-primary" (click)="loadHistoryData()" [disabled]="historyOrdersLoading() || historyCountsLoading() || historyWeeklyCountsLoading()">
+          {{ (historyOrdersLoading() || historyCountsLoading() || historyWeeklyCountsLoading()) ? '載入中...' : '查詢' }}
         </button>
       </div>
 
@@ -788,60 +795,45 @@
         @if (historyCountsLoading()) {
           <div class="loading-state">載入盤點紀錄中...</div>
         } @else if (historyCountRecords().length === 0) {
-          <div class="placeholder-text">尚無此月份的盤點紀錄。請選擇月份並點擊查詢。</div>
+          <div class="placeholder-text">尚無 {{ historyYear }} 年的盤點紀錄。請選擇年份並點擊查詢。</div>
         } @else {
-          @for (record of historyCountRecords(); track record.id) {
-            <div class="daily-grid-container">
-              <div class="daily-category-section">
-                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                  <span>
-                    盤點日：{{ record.countDate }}
-                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 0.5rem;">
-                      區間：{{ record.startDate }} ~ {{ record.endDate }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
-                    </span>
-                  </span>
-                  <button class="btn-sm btn-secondary" (click)="onHistoryMonthlyRecordLoad(record); $event.stopPropagation()">載入此紀錄</button>
-                </h4>
-                @for (category of categoryKeys; track category) {
-                  @if (getHistoryCountEntriesByCategory(record, category).length > 0) {
-                    <h5 style="margin: 0.75rem 0 0.25rem 0.5rem; color: #495057;">{{ CATEGORY_NAMES[category] }}</h5>
-                    <div class="daily-table-wrapper">
-                      <table class="daily-grid-table">
-                        <thead>
-                          <tr>
-                            <th class="sticky-item-col">品項</th>
-                            <th>期末結存(個)</th>
-                            <th>期末結存(箱)</th>
-                            @if (record.actualCounts) {
-                              <th>實際盤點(個)</th>
-                              <th>實際盤點(箱)</th>
-                              <th>誤差值</th>
-                            }
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (entry of getHistoryCountEntriesByCategory(record, category); track entry.key) {
-                            <tr>
-                              <td class="sticky-item-col item-name">{{ entry.item }}</td>
-                              <td class="has-value">{{ entry.qty }}</td>
-                              <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
-                              @if (record.actualCounts) {
-                                <td class="has-value">{{ getActualCountValue(record, entry.category, entry.item) ?? '-' }}</td>
-                                <td>{{ getActualCountValue(record, entry.category, entry.item) !== null ? calculateBoxes(entry.category, entry.item, getActualCountValue(record, entry.category, entry.item)!) : '-' }}</td>
-                                <td [class.variance-warning]="isHistoryVarianceSignificant(record, entry)">
-                                  {{ getHistoryVariance(record, entry) ?? '-' }}
-                                </td>
-                              }
-                            </tr>
+          <div class="daily-grid-container">
+            @for (category of categoryKeys; track category) {
+              @if (getMonthlyCountItemsByCategory(category).length > 0) {
+                <div class="daily-category-section">
+                  <h4 class="daily-category-title">{{ CATEGORY_NAMES[category] }}</h4>
+                  <div class="daily-table-wrapper">
+                    <table class="daily-grid-table">
+                      <thead>
+                        <tr>
+                          <th class="sticky-item-col">品項</th>
+                          @for (month of getMonthlyCountMonths(); track month) {
+                            <th [class.has-data]="hasMonthlyCountData(month)">
+                              {{ getMonthLabel(month) }}
+                            </th>
                           }
-                        </tbody>
-                      </table>
-                    </div>
-                  }
-                }
-              </div>
-            </div>
-          }
+                          <th class="total-col">合計</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (item of getMonthlyCountItemsByCategory(category); track item) {
+                          <tr>
+                            <td class="sticky-item-col item-name">{{ item }}</td>
+                            @for (month of getMonthlyCountMonths(); track month) {
+                              <td class="day-cell" [class.has-value]="getMonthlyCountValue(category, item, month) !== null">
+                                {{ getMonthlyCountValue(category, item, month) ?? '' }}
+                              </td>
+                            }
+                            <td class="total-col total-value">{{ getMonthlyCountRowTotal(category, item) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            }
+          </div>
         }
       }
 
