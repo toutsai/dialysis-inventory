@@ -171,12 +171,13 @@ export class InventoryComponent implements OnInit {
     );
   }
 
-  // History lists
-  orderHistory = signal<any[]>([]);
-  orderHistoryLoading = signal(false);
-  expandedOrderId = signal<string | null>(null);
-  monthlyHistory = signal<any[]>([]);
-  monthlyHistoryLoading = signal(false);
+  // ==================== Tab: 訂單與盤點紀錄 ====================
+  historySubTab = signal<'orders' | 'counts'>('orders');
+  historyMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7);
+  historyOrderRecords = signal<any[]>([]);
+  historyCountRecords = signal<any[]>([]);
+  historyOrdersLoading = signal(false);
+  historyCountsLoading = signal(false);
 
   knownItems: Record<string, string[]> = {
     artificialKidney: [],
@@ -1661,79 +1662,82 @@ export class InventoryComponent implements OnInit {
     return grid.reduce((sum: number, v: number) => sum + (v || 0), 0);
   }
 
-  // ==================== History Lists ====================
+  // ==================== 訂單與盤點紀錄 Methods ====================
 
-  async loadOrderHistory(): Promise<void> {
-    this.orderHistoryLoading.set(true);
-    try {
-      const db = this.firebaseService.db;
-      const q = query(
-        collection(db, 'inventory_orders'),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
-      const snap = await getDocs(q);
-      this.orderHistory.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (error: any) {
-      console.error('載入歷史訂單失敗:', error);
-    } finally {
-      this.orderHistoryLoading.set(false);
+  loadHistoryData(): void {
+    if (this.historySubTab() === 'orders') {
+      this.loadHistoryOrders();
+    } else {
+      this.loadHistoryMonthlyRecords();
     }
   }
 
-  toggleOrderDetail(id: string): void {
-    this.expandedOrderId.set(this.expandedOrderId() === id ? null : id);
+  async loadHistoryOrders(): Promise<void> {
+    this.historyOrdersLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const month = this.historyMonth;
+      const startDate = `${month}-01`;
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      const endDate = `${nextMonth}-01`;
+
+      const q = query(
+        collection(db, 'inventory_orders'),
+        where('orderDate', '>=', startDate),
+        where('orderDate', '<', endDate),
+        orderBy('orderDate', 'desc')
+      );
+      const snap = await getDocs(q);
+      this.historyOrderRecords.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error: any) {
+      console.error('載入歷史訂單失敗:', error);
+    } finally {
+      this.historyOrdersLoading.set(false);
+    }
   }
 
-  getOrderItemSummary(order: any): string {
-    const items = order.items || [];
-    return items.map((i: any) => {
-      const total = (i.grid || []).reduce((s: number, v: number) => s + (v || 0), 0);
-      return `${i.item}(${total})`;
-    }).join('、');
+  async loadHistoryMonthlyRecords(): Promise<void> {
+    this.historyCountsLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const month = this.historyMonth;
+
+      // Try direct document lookup by ID (YYYY-MM)
+      const docSnap = await getDoc(doc(db, 'inventory_counts', month));
+      if (docSnap.exists()) {
+        this.historyCountRecords.set([{ id: docSnap.id, ...docSnap.data() }]);
+      } else {
+        // Fallback: query by countDate range
+        const q = query(
+          collection(db, 'inventory_counts'),
+          where('type', '==', 'monthly'),
+          where('countDate', '>=', `${month}-01`),
+          where('countDate', '<=', `${month}-31`),
+          orderBy('countDate', 'desc')
+        );
+        const snap = await getDocs(q);
+        this.historyCountRecords.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    } catch (error: any) {
+      console.error('載入歷史盤點失敗:', error);
+    } finally {
+      this.historyCountsLoading.set(false);
+    }
+  }
+
+  onHistoryMonthlyRecordLoad(record: any): void {
+    this.monthlyFilter.countDate = record.countDate || '';
+    this.monthlyFilter.startDate = record.startDate || '';
+    this.monthlyFilter.endDate = record.endDate || '';
+    this.loadSavedMonthlyCount();
+    this.activeTab.set('monthly');
   }
 
   formatTimestamp(ts: any): string {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return this.toTaiwanDateTime(d).replace('T', ' ');
-  }
-
-  async loadMonthlyHistory(): Promise<void> {
-    this.monthlyHistoryLoading.set(true);
-    try {
-      const db = this.firebaseService.db;
-      const q = query(
-        collection(db, 'inventory_counts'),
-        where('type', '==', 'monthly'),
-        orderBy('createdAt', 'desc'),
-        limit(12)
-      );
-      const snap = await getDocs(q);
-      this.monthlyHistory.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (error: any) {
-      console.error('載入歷史盤點失敗:', error);
-    } finally {
-      this.monthlyHistoryLoading.set(false);
-    }
-  }
-
-  getMonthlyCountSummary(record: any): string {
-    const counts = record.counts || {};
-    const items: string[] = [];
-    for (const category of Object.keys(counts)) {
-      for (const [item, qty] of Object.entries(counts[category])) {
-        items.push(`${item}(${qty})`);
-      }
-    }
-    return items.slice(0, 5).join('、') + (items.length > 5 ? '...' : '');
-  }
-
-  loadMonthlyHistoryRecord(record: any): void {
-    this.monthlyFilter.countDate = record.countDate || '';
-    this.monthlyFilter.startDate = record.startDate || '';
-    this.monthlyFilter.endDate = record.endDate || '';
-    this.loadSavedMonthlyCount();
   }
 
   getGridTotal(grid: number[] | undefined): number {

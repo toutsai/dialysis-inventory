@@ -20,6 +20,9 @@
       <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
         <span class="nav-icon">📝</span>每週訂單
       </button>
+      <button [class.active]="activeTab() === 'history'" (click)="activeTab.set('history')">
+        <span class="nav-icon">📜</span>紀錄查詢
+      </button>
       @if (authService.isAdmin()) {
         <div class="sidebar-divider"></div>
         <button [class.active]="activeTab() === 'users'" (click)="activeTab.set('users'); fetchUsers()">
@@ -491,54 +494,6 @@
         <div class="placeholder-text">請選擇月份並點擊「計算庫存」。</div>
       }
 
-      <!-- 歷史盤點紀錄 -->
-      <div class="history-section">
-        <div class="section-header">
-          <h4>歷史盤點紀錄</h4>
-          <button class="btn-sm btn-secondary" (click)="loadMonthlyHistory()" [disabled]="monthlyHistoryLoading()">
-            {{ monthlyHistoryLoading() ? '載入中...' : '載入歷史' }}
-          </button>
-        </div>
-        @if (monthlyHistory().length > 0) {
-          <div class="daily-grid-container">
-            @for (record of monthlyHistory(); track record.id) {
-              <div class="daily-category-section">
-                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between;">
-                  <span>
-                    盤點日：{{ record.countDate }}
-                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
-                      區間：{{ record.startDate }} ~ {{ record.endDate }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
-                    </span>
-                  </span>
-                  <button class="btn-sm btn-secondary" (click)="loadMonthlyHistoryRecord(record); $event.stopPropagation()">載入此紀錄</button>
-                </h4>
-                <div class="daily-table-wrapper">
-                  <table class="daily-grid-table">
-                    <thead>
-                      <tr>
-                        <th class="sticky-item-col">類別</th>
-                        <th>品項</th>
-                        <th>期末結存(個)</th>
-                        <th>期末結存(箱)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (entry of getHistoryCountEntries(record); track entry.key) {
-                        <tr>
-                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
-                          <td>{{ entry.item }}</td>
-                          <td class="has-value">{{ entry.qty }}</td>
-                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
     </div>
     }
 
@@ -660,17 +615,40 @@
         <div class="placeholder-text">請選擇週次並點擊「載入資料」。</div>
       }
 
-      <!-- 歷史訂單 -->
-      <div class="history-section">
-        <div class="section-header">
-          <h4>歷史訂單</h4>
-          <button class="btn-sm btn-secondary" (click)="loadOrderHistory()" [disabled]="orderHistoryLoading()">
-            {{ orderHistoryLoading() ? '載入中...' : '載入歷史' }}
-          </button>
+    </div>
+    }
+
+    <!-- ========== Tab: 訂單與盤點紀錄 ========== -->
+    @if (activeTab() === 'history') {
+    <div class="tab-panel">
+      <div class="panel-header">
+        <h3>訂單與盤點紀錄</h3>
+      </div>
+
+      <div class="sub-tabs">
+        <button [class.active]="historySubTab() === 'orders'" (click)="historySubTab.set('orders')">訂單紀錄</button>
+        <button [class.active]="historySubTab() === 'counts'" (click)="historySubTab.set('counts')">盤點紀錄</button>
+      </div>
+
+      <div class="search-controls">
+        <div class="search-field">
+          <label>選擇月份</label>
+          <input type="month" [(ngModel)]="historyMonth" />
         </div>
-        @if (orderHistory().length > 0) {
+        <button class="btn-primary" (click)="loadHistoryData()" [disabled]="historyOrdersLoading() || historyCountsLoading()">
+          {{ (historyOrdersLoading() || historyCountsLoading()) ? '載入中...' : '查詢' }}
+        </button>
+      </div>
+
+      <!-- 訂單紀錄 -->
+      @if (historySubTab() === 'orders') {
+        @if (historyOrdersLoading()) {
+          <div class="loading-state">載入訂單紀錄中...</div>
+        } @else if (historyOrderRecords().length === 0) {
+          <div class="placeholder-text">尚無此月份的訂單紀錄。請選擇月份並點擊查詢。</div>
+        } @else {
           <div class="daily-grid-container">
-            @for (order of orderHistory(); track order.id) {
+            @for (order of historyOrderRecords(); track order.id) {
               <div class="daily-category-section">
                 <h4 class="daily-category-title">
                   {{ order.orderDate }} 訂單
@@ -701,7 +679,7 @@
                           <td>{{ item.item }}</td>
                           <td>{{ item.hospitalCode }}</td>
                           @for (val of item.grid || [0,0,0,0,0,0]; track $index) {
-                            <td [class.has-value]="val > 0" [class.has-data]="$index === 0 || $index === 2">
+                            <td [class.has-value]="val > 0">
                               {{ val || '' }}
                             </td>
                           }
@@ -715,7 +693,54 @@
             }
           </div>
         }
-      </div>
+      }
+
+      <!-- 盤點紀錄 -->
+      @if (historySubTab() === 'counts') {
+        @if (historyCountsLoading()) {
+          <div class="loading-state">載入盤點紀錄中...</div>
+        } @else if (historyCountRecords().length === 0) {
+          <div class="placeholder-text">尚無此月份的盤點紀錄。請選擇月份並點擊查詢。</div>
+        } @else {
+          <div class="daily-grid-container">
+            @for (record of historyCountRecords(); track record.id) {
+              <div class="daily-category-section">
+                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>
+                    盤點日：{{ record.countDate }}
+                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
+                      區間：{{ record.startDate }} ~ {{ record.endDate }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
+                    </span>
+                  </span>
+                  <button class="btn-sm btn-secondary" (click)="onHistoryMonthlyRecordLoad(record); $event.stopPropagation()">載入此紀錄</button>
+                </h4>
+                <div class="daily-table-wrapper">
+                  <table class="daily-grid-table">
+                    <thead>
+                      <tr>
+                        <th class="sticky-item-col">類別</th>
+                        <th>品項</th>
+                        <th>期末結存(個)</th>
+                        <th>期末結存(箱)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (entry of getHistoryCountEntries(record); track entry.key) {
+                        <tr>
+                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
+                          <td>{{ entry.item }}</td>
+                          <td class="has-value">{{ entry.qty }}</td>
+                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
     </div>
     }
 
