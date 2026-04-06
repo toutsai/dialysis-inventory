@@ -1358,6 +1358,15 @@ export class InventoryComponent implements OnInit {
     return boxes * this.getUnitsPerBox(category, item);
   }
 
+  clearWeeklyCount(): void {
+    for (const category of Object.keys(this.weeklyCountBoxes)) {
+      for (const item of Object.keys(this.weeklyCountBoxes[category])) {
+        this.weeklyCountBoxes[category][item] = 0;
+        this.weeklyCount[category][item] = 0;
+      }
+    }
+  }
+
   syncWeeklyCount(): void {
     for (const category of Object.keys(this.weeklyCountBoxes)) {
       for (const [item, boxes] of Object.entries(this.weeklyCountBoxes[category])) {
@@ -1952,6 +1961,59 @@ export class InventoryComponent implements OnInit {
       }
     }
     return entries;
+  }
+
+  getHistoryCountEntriesByCategory(record: any, category: string): { key: string; category: string; item: string; qty: number }[] {
+    const counts = record.counts || {};
+    const entries: { key: string; category: string; item: string; qty: number }[] = [];
+    for (const [item, qty] of Object.entries(counts[category] || {})) {
+      entries.push({ key: `${category}:${item}`, category, item, qty: qty as number });
+    }
+    return entries;
+  }
+
+  getActualCountValue(record: any, category: string, item: string): number | null {
+    return record.actualCounts?.[category]?.[item] ?? null;
+  }
+
+  getHistoryVariance(record: any, entry: { category: string; item: string; qty: number }): string | null {
+    const actual = this.getActualCountValue(record, entry.category, entry.item);
+    if (actual === null) return null;
+    const expected = record.expectedCounts?.[entry.category]?.[entry.item] ?? entry.qty;
+    const variance = actual - expected;
+    return (variance > 0 ? '+' : '') + variance;
+  }
+
+  isHistoryVarianceSignificant(record: any, entry: { category: string; item: string; qty: number }): boolean {
+    const actual = this.getActualCountValue(record, entry.category, entry.item);
+    if (actual === null) return false;
+    const expected = record.expectedCounts?.[entry.category]?.[entry.item] ?? entry.qty;
+    const variance = Math.abs(actual - expected);
+    return variance > Math.max(1, Math.abs(expected) * 0.01);
+  }
+
+  // 週盤點紀錄一覽表 helpers
+  getWeeklyCountColumns(): string[] {
+    const records = this.historyWeeklyCountRecords();
+    const weeks = records.map((r: any) => r.week || r.id).filter(Boolean);
+    return [...new Set(weeks)].sort();
+  }
+
+  getWeeklyCountItemsByCategory(category: string): string[] {
+    const records = this.historyWeeklyCountRecords();
+    const items = new Set<string>();
+    records.forEach((r: any) => {
+      const counts = r.counts?.[category] || {};
+      Object.keys(counts).forEach(item => items.add(item));
+    });
+    return [...items].sort();
+  }
+
+  getWeeklyCountValue(category: string, item: string, weekId: string): number | null {
+    const records = this.historyWeeklyCountRecords();
+    const record = records.find((r: any) => (r.week || r.id) === weekId);
+    if (!record) return null;
+    return record.counts?.[category]?.[item] ?? null;
   }
 
   getHospitalCode(category: string, itemName: string): string {
