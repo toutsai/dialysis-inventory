@@ -609,9 +609,12 @@
           <div class="weekly-section">
             <div class="section-header">
               <h4>盤點輸入 ({{ weeklyFilter.countDate }})</h4>
-              <button class="btn-sm btn-primary" (click)="saveWeeklyCount()" [disabled]="weeklyLoading()">
-                儲存盤點
-              </button>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-sm btn-secondary" (click)="clearWeeklyCount()">清除盤點</button>
+                <button class="btn-sm btn-primary" (click)="saveWeeklyCount()" [disabled]="weeklyLoading()">
+                  儲存盤點
+                </button>
+              </div>
             </div>
             <div class="inventory-grid">
               @for (category of categoryKeys; track category) {
@@ -780,54 +783,69 @@
         }
       }
 
-      <!-- 盤點紀錄 -->
+      <!-- 月盤點紀錄 -->
       @if (historySubTab() === 'counts') {
         @if (historyCountsLoading()) {
           <div class="loading-state">載入盤點紀錄中...</div>
         } @else if (historyCountRecords().length === 0) {
           <div class="placeholder-text">尚無此月份的盤點紀錄。請選擇月份並點擊查詢。</div>
         } @else {
-          <div class="daily-grid-container">
-            @for (record of historyCountRecords(); track record.id) {
+          @for (record of historyCountRecords(); track record.id) {
+            <div class="daily-grid-container">
               <div class="daily-category-section">
-                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between;">
+                <h4 class="daily-category-title" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                   <span>
                     盤點日：{{ record.countDate }}
-                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
+                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 0.5rem;">
                       區間：{{ record.startDate }} ~ {{ record.endDate }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
                     </span>
                   </span>
                   <button class="btn-sm btn-secondary" (click)="onHistoryMonthlyRecordLoad(record); $event.stopPropagation()">載入此紀錄</button>
                 </h4>
-                <div class="daily-table-wrapper">
-                  <table class="daily-grid-table">
-                    <thead>
-                      <tr>
-                        <th class="sticky-item-col">類別</th>
-                        <th>品項</th>
-                        <th>期末結存(個)</th>
-                        <th>期末結存(箱)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (entry of getHistoryCountEntries(record); track entry.key) {
-                        <tr>
-                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
-                          <td>{{ entry.item }}</td>
-                          <td class="has-value">{{ entry.qty }}</td>
-                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                @for (category of categoryKeys; track category) {
+                  @if (getHistoryCountEntriesByCategory(record, category).length > 0) {
+                    <h5 style="margin: 0.75rem 0 0.25rem 0.5rem; color: #495057;">{{ CATEGORY_NAMES[category] }}</h5>
+                    <div class="daily-table-wrapper">
+                      <table class="daily-grid-table">
+                        <thead>
+                          <tr>
+                            <th class="sticky-item-col">品項</th>
+                            <th>期末結存(個)</th>
+                            <th>期末結存(箱)</th>
+                            @if (record.actualCounts) {
+                              <th>實際盤點(個)</th>
+                              <th>實際盤點(箱)</th>
+                              <th>誤差值</th>
+                            }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (entry of getHistoryCountEntriesByCategory(record, category); track entry.key) {
+                            <tr>
+                              <td class="sticky-item-col item-name">{{ entry.item }}</td>
+                              <td class="has-value">{{ entry.qty }}</td>
+                              <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
+                              @if (record.actualCounts) {
+                                <td class="has-value">{{ getActualCountValue(record, entry.category, entry.item) ?? '-' }}</td>
+                                <td>{{ getActualCountValue(record, entry.category, entry.item) !== null ? calculateBoxes(entry.category, entry.item, getActualCountValue(record, entry.category, entry.item)!) : '-' }}</td>
+                                <td [class.variance-warning]="isHistoryVarianceSignificant(record, entry)">
+                                  {{ getHistoryVariance(record, entry) ?? '-' }}
+                                </td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                }
               </div>
-            }
-          </div>
+            </div>
+          }
         }
       }
 
-      <!-- 週盤點紀錄 -->
+      <!-- 週盤點紀錄 (品項×週次一覽表) -->
       @if (historySubTab() === 'weeklyCounts') {
         @if (historyWeeklyCountsLoading()) {
           <div class="loading-state">載入週盤點紀錄中...</div>
@@ -835,39 +853,36 @@
           <div class="placeholder-text">尚無此月份的週盤點紀錄。請選擇月份並點擊查詢。</div>
         } @else {
           <div class="daily-grid-container">
-            @for (record of historyWeeklyCountRecords(); track record.id) {
-              <div class="daily-category-section">
-                <h4 class="daily-category-title">
-                  <span>
-                    盤點日：{{ record.countDate }}
-                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
-                      週次：{{ record.week }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
-                    </span>
-                  </span>
-                </h4>
-                <div class="daily-table-wrapper">
-                  <table class="daily-grid-table">
-                    <thead>
-                      <tr>
-                        <th class="sticky-item-col">類別</th>
-                        <th>品項</th>
-                        <th>盤點量(個)</th>
-                        <th>盤點量(箱)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (entry of getHistoryCountEntries(record); track entry.key) {
+            @for (category of categoryKeys; track category) {
+              @if (getWeeklyCountItemsByCategory(category).length > 0) {
+                <div class="daily-category-section">
+                  <h4 class="daily-category-title">{{ CATEGORY_NAMES[category] }}</h4>
+                  <div class="daily-table-wrapper">
+                    <table class="daily-grid-table">
+                      <thead>
                         <tr>
-                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
-                          <td>{{ entry.item }}</td>
-                          <td class="has-value">{{ entry.qty }}</td>
-                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
+                          <th class="sticky-item-col">品項</th>
+                          @for (week of getWeeklyCountColumns(); track week) {
+                            <th class="has-data">{{ week }}</th>
+                          }
                         </tr>
-                      }
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        @for (item of getWeeklyCountItemsByCategory(category); track item) {
+                          <tr>
+                            <td class="sticky-item-col item-name">{{ item }}</td>
+                            @for (week of getWeeklyCountColumns(); track week) {
+                              <td class="day-cell" [class.has-value]="getWeeklyCountValue(category, item, week) !== null">
+                                {{ getWeeklyCountValue(category, item, week) ?? '' }}
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              }
             }
           </div>
         }
