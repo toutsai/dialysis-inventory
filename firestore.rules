@@ -16,50 +16,46 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'admin';
     }
 
-    function isViewer() {
-      return isAuthenticated();
-    }
-
-    function isAdminOrViewerRole() {
+    function isAdminOrEditor() {
       let role = getUserRole();
-      return isAuthenticated() && (role == 'admin' || role == 'viewer');
+      return isAuthenticated() && (role == 'admin' || role == 'editor');
     }
 
     // --- 集合規則 ---
 
     match /users/{userId} {
-      allow list, get: if isViewer();
+      allow read: if isAdminOrEditor();
       allow write: if isAdmin();
     }
 
     match /inventory_items/{itemId} {
-      allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
     }
 
     match /inventory_purchases/{purchaseId} {
-      allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
     }
 
     match /inventory_orders/{orderId} {
-      allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
     }
 
     match /inventory_counts/{countId} {
-      allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
     }
 
     match /daily_consumption/{docId} {
-      allow read: if isViewer();
-      allow write: if isAdminOrViewerRole();
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
     }
 
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      allow create: if isAdminOrEditor();
       allow update, delete: if false;
     }
   }
