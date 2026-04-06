@@ -81,8 +81,15 @@
   /* --- Layout --- */
   .page-container {
     flex-direction: column;
-    height: auto;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .page-main-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
   }
 
   /* --- Sidebar → 横向 Tab Bar --- */
