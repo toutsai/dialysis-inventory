@@ -136,6 +136,12 @@ export class InventoryComponent implements OnInit {
     dialysateCa: {},
     bicarbonateType: {},
   };
+  // 月盤點實際盤點輸入
+  monthlyActualCountBoxes: Record<string, Record<string, number>> = {
+    artificialKidney: {},
+    dialysateCa: {},
+    bicarbonateType: {},
+  };
 
   // ==================== Tab 4: 每週訂單 ====================
   weeklyLoading = signal(false);
@@ -177,12 +183,14 @@ export class InventoryComponent implements OnInit {
   }
 
   // ==================== Tab: 訂單與盤點紀錄 ====================
-  historySubTab = signal<'orders' | 'counts'>('orders');
+  historySubTab = signal<'orders' | 'counts' | 'weeklyCounts'>('orders');
   historyMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7);
   historyOrderRecords = signal<any[]>([]);
   historyCountRecords = signal<any[]>([]);
+  historyWeeklyCountRecords = signal<any[]>([]);
   historyOrdersLoading = signal(false);
   historyCountsLoading = signal(false);
+  historyWeeklyCountsLoading = signal(false);
 
   knownItems: Record<string, string[]> = {
     artificialKidney: [],
@@ -1109,9 +1117,36 @@ export class InventoryComponent implements OnInit {
           purchased,
           consumed,
           currentStock,
-          adjustment: 0,
+          actualCount: null as number | null,
+          variance: null as number | null,
+          useActual: false,
         };
       });
+
+      // Load previously saved actual counts if they exist
+      const countKey = this.monthlyFilter.countDate.slice(0, 7);
+      const savedDoc = await getDoc(doc(db, 'inventory_counts', countKey));
+      if (savedDoc.exists()) {
+        const savedData = savedDoc.data() as any;
+        const actualCounts = savedData.actualCounts || {};
+        const actualCountBoxes = savedData.actualCountBoxes || {};
+        for (const category of Object.keys(CATEGORY_NAMES)) {
+          if (actualCounts[category]) {
+            for (const [item, qty] of Object.entries(actualCounts[category])) {
+              if (this.monthlyInventory[category]?.[item]) {
+                const actual = qty as number;
+                this.monthlyInventory[category][item].actualCount = actual;
+                this.monthlyInventory[category][item].variance = actual - this.monthlyInventory[category][item].currentStock;
+                this.monthlyInventory[category][item].useActual = true;
+              }
+            }
+          }
+          if (actualCountBoxes[category]) {
+            if (!this.monthlyActualCountBoxes[category]) this.monthlyActualCountBoxes[category] = {};
+            Object.assign(this.monthlyActualCountBoxes[category], actualCountBoxes[category]);
+          }
+        }
+      }
 
       this.monthlyCalculated.set(true);
     } catch (error: any) {
@@ -1152,16 +1187,27 @@ export class InventoryComponent implements OnInit {
       if (data.endDate) this.monthlyFilter.endDate = data.endDate;
 
       // Populate monthlyInventory with saved counts
+      const actualCounts = data.actualCounts || {};
+      const actualCountBoxes = data.actualCountBoxes || {};
+      const expectedCounts = data.expectedCounts || {};
       for (const category of Object.keys(CATEGORY_NAMES)) {
         if (!this.monthlyInventory[category]) this.monthlyInventory[category] = {};
+        if (!this.monthlyActualCountBoxes[category]) this.monthlyActualCountBoxes[category] = {};
         for (const [item, qty] of Object.entries(counts[category] || {})) {
+          const expectedStock = (expectedCounts[category]?.[item] as number) ?? (qty as number);
+          const actualCount = (actualCounts[category]?.[item] as number) ?? null;
           this.monthlyInventory[category][item] = {
             previousStock: 0,
             purchased: 0,
             consumed: 0,
-            currentStock: qty as number,
-            adjustment: 0,
+            currentStock: expectedStock,
+            actualCount,
+            variance: actualCount !== null ? actualCount - expectedStock : null,
+            useActual: actualCount !== null,
           };
+          if (actualCountBoxes[category]?.[item] !== undefined) {
+            this.monthlyActualCountBoxes[category][item] = actualCountBoxes[category][item];
+          }
         }
       }
 
@@ -1204,11 +1250,28 @@ export class InventoryComponent implements OnInit {
       const db = this.firebaseService.db;
       const currentUser = this.authService.currentUser();
       const counts: Record<string, Record<string, number>> = {};
+      const expectedCounts: Record<string, Record<string, number>> = {};
+      const actualCounts: Record<string, Record<string, number>> = {};
+      const actualCountBoxes: Record<string, Record<string, number>> = {};
 
       for (const category of Object.keys(this.monthlyInventory)) {
         counts[category] = {};
+        expectedCounts[category] = {};
+        actualCounts[category] = {};
+        actualCountBoxes[category] = {};
         for (const [item, data] of Object.entries(this.monthlyInventory[category])) {
-          counts[category][item] = data.currentStock + (data.adjustment || 0);
+          expectedCounts[category][item] = data.currentStock;
+          if (data.actualCount !== null && data.actualCount !== undefined) {
+            actualCounts[category][item] = data.actualCount;
+            if (this.monthlyActualCountBoxes[category]?.[item] !== undefined) {
+              actualCountBoxes[category][item] = this.monthlyActualCountBoxes[category][item];
+            }
+            // 結轉值：用實際盤點或期末結存
+            counts[category][item] = data.useActual ? data.actualCount : data.currentStock;
+          } else {
+            // 無實際盤點，用期末結存
+            counts[category][item] = data.currentStock;
+          }
         }
       }
 
@@ -1220,6 +1283,9 @@ export class InventoryComponent implements OnInit {
         startDate: this.monthlyFilter.startDate,
         endDate: this.monthlyFilter.endDate,
         counts,
+        expectedCounts,
+        actualCounts,
+        actualCountBoxes,
         createdBy: currentUser?.name || '未知',
         createdAt: Timestamp.now(),
       });
@@ -1234,6 +1300,37 @@ export class InventoryComponent implements OnInit {
   getMonthlyInventoryEntries(category: string): { item: string; data: any }[] {
     const catData = this.monthlyInventory[category] || {};
     return Object.entries(catData).map(([item, data]) => ({ item, data }));
+  }
+
+  syncMonthlyActualCount(): void {
+    for (const category of Object.keys(this.monthlyActualCountBoxes)) {
+      for (const [item, boxes] of Object.entries(this.monthlyActualCountBoxes[category])) {
+        const unitsPerBox = this.getUnitsPerBox(category, item);
+        const actualCount = (boxes || 0) * unitsPerBox;
+        if (this.monthlyInventory[category]?.[item]) {
+          this.monthlyInventory[category][item].actualCount = actualCount;
+          this.monthlyInventory[category][item].variance = actualCount - this.monthlyInventory[category][item].currentStock;
+          this.monthlyInventory[category][item].useActual = true;
+        }
+      }
+    }
+  }
+
+  calculateMonthlyActualUnits(category: string, item: string): number {
+    const boxes = this.monthlyActualCountBoxes[category]?.[item] || 0;
+    return boxes * this.getUnitsPerBox(category, item);
+  }
+
+  isVarianceSignificant(entry: any): boolean {
+    if (entry.data.variance === null || entry.data.variance === undefined) return false;
+    const consumed = Math.max(Math.abs(entry.data.consumed || 0), 1);
+    return Math.abs(entry.data.variance) > consumed * 0.01;
+  }
+
+  toggleUseActual(category: string, item: string): void {
+    if (this.monthlyInventory[category]?.[item]) {
+      this.monthlyInventory[category][item].useActual = !this.monthlyInventory[category][item].useActual;
+    }
   }
 
   // ==================== Tab 4 Methods ====================
@@ -1739,6 +1836,8 @@ export class InventoryComponent implements OnInit {
   loadHistoryData(): void {
     if (this.historySubTab() === 'orders') {
       this.loadHistoryOrders();
+    } else if (this.historySubTab() === 'weeklyCounts') {
+      this.loadHistoryWeeklyRecords();
     } else {
       this.loadHistoryMonthlyRecords();
     }
@@ -1795,6 +1894,33 @@ export class InventoryComponent implements OnInit {
       console.error('載入歷史盤點失敗:', error);
     } finally {
       this.historyCountsLoading.set(false);
+    }
+  }
+
+  async loadHistoryWeeklyRecords(): Promise<void> {
+    this.historyWeeklyCountsLoading.set(true);
+    try {
+      const db = this.firebaseService.db;
+      const month = this.historyMonth;
+      // Weekly doc IDs are like "2026-W14". We query by countDate range.
+      const startDate = `${month}-01`;
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      const endDate = `${nextMonth}-01`;
+
+      const q = query(
+        collection(db, 'inventory_counts'),
+        where('type', '==', 'weekly'),
+        where('countDate', '>=', startDate),
+        where('countDate', '<', endDate),
+        orderBy('countDate', 'desc')
+      );
+      const snap = await getDocs(q);
+      this.historyWeeklyCountRecords.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error: any) {
+      console.error('載入週盤點紀錄失敗:', error);
+    } finally {
+      this.historyWeeklyCountsLoading.set(false);
     }
   }
 
