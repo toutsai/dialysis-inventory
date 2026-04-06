@@ -1032,6 +1032,60 @@
   </div>
   }
 
+  <!-- 未匹配品項處理 Modal -->
+  @if (showUnmatchedModal()) {
+  <div class="modal-overlay" (click)="showUnmatchedModal.set(false)">
+    <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>品項不在設定檔中</h3>
+        <button class="modal-close" (click)="showUnmatchedModal.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: #856404; background: #fff3cd; padding: 0.75rem; border-radius: 6px;">
+          以下品項未在品項設定中找到，請選擇「新增此品項」或「連結到現有品項」。
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>上傳檔品項名稱</th>
+                <th>類別</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of unmatchedUploadItems(); track item.name; let i = $index) {
+                <tr>
+                  <td><strong>{{ item.name }}</strong></td>
+                  <td>{{ CATEGORY_NAMES[item.category] || item.category }}</td>
+                  <td style="min-width: 320px;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                      <button class="btn-sm btn-primary" (click)="addUnmatchedAsNewItem(item)">新增此品項</button>
+                      <span style="color: #6c757d;">或</span>
+                      <select [(ngModel)]="unmatchedUploadItems()[i].linkTo" style="padding: 0.3rem 0.5rem; min-width: 150px;">
+                        <option value="">選擇連結品項...</option>
+                        @for (existing of getItemSuggestions(item.category); track existing) {
+                          <option [value]="existing">{{ existing }}</option>
+                        }
+                      </select>
+                      <button class="btn-sm btn-success" [disabled]="!unmatchedUploadItems()[i].linkTo" (click)="linkUnmatchedItem(i)">
+                        確認連結
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showUnmatchedModal.set(false)">稍後處理</button>
+      </div>
+    </div>
+  </div>
+  }
+
   <app-alert-dialog
     [isVisible]="isAlertDialogVisible()"
     [title]="alertDialogTitle()"

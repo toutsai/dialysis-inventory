@@ -122,6 +122,11 @@ export class InventoryComponent implements OnInit {
   daysInMonth = signal<number[]>([]);
   uploadedDays = signal<Set<number>>(new Set());
 
+  // Unmatched items from upload
+  showUnmatchedModal = signal(false);
+  unmatchedUploadItems = signal<{ name: string; category: string; linkTo: string }[]>([]);
+  lastUploadDate = '';
+
   // ==================== Tab 3: 每月盤點 ====================
   monthlyLoading = signal(false);
   monthlyCalculated = signal(false);
@@ -623,16 +628,84 @@ export class InventoryComponent implements OnInit {
     this.uploadResult.set(null);
     try {
       const currentUser = this.authService.currentUser();
+      // Collect all known items across categories for matching
+      const allKnown = [
+        ...this.knownItems['artificialKidney'],
+        ...this.knownItems['dialysateCa'],
+        ...this.knownItems['bicarbonateType'],
+      ];
       const result = await this.dailyConsumption.parseExcelAndSave(
         file,
         currentUser?.name || '未知',
+        allKnown,
       );
       this.uploadResult.set(result);
+
+      // Check for unmatched items
+      if (result.success && result.unmatchedItems && result.unmatchedItems.length > 0) {
+        this.lastUploadDate = result.date || '';
+        this.unmatchedUploadItems.set(
+          result.unmatchedItems.map(item => ({ ...item, linkTo: '' }))
+        );
+        this.showUnmatchedModal.set(true);
+      }
     } catch (error: any) {
       console.error('上傳處理失敗:', error);
       this.uploadResult.set({ message: `上傳失敗: ${error.message}`, errorCount: 1 });
     } finally {
       this.isUploading.set(false);
+    }
+  }
+
+  addUnmatchedAsNewItem(item: { name: string; category: string }): void {
+    this.showUnmatchedModal.set(false);
+    this.activeTab.set('items');
+    this.itemForm.category = item.category;
+    this.itemForm.name = item.name;
+    this.itemForm.unitsPerBox = null;
+    this.itemForm.safeInventoryLevel = 0;
+    this.itemForm.hospitalCode = '';
+    this.itemForm.brand = '';
+    this.itemForm.vendorPhone = '';
+    this.editingItem.set(null);
+    this.showItemModal.set(true);
+  }
+
+  async linkUnmatchedItem(index: number): Promise<void> {
+    const items = this.unmatchedUploadItems();
+    const item = items[index];
+    if (!item.linkTo) return;
+
+    try {
+      const db = this.firebaseService.db;
+      const docRef = doc(db, 'daily_consumption', this.lastUploadDate);
+      const snap = await getDocs(
+        query(collection(db, 'daily_consumption'), where('date', '==', this.lastUploadDate))
+      );
+      if (!snap.empty) {
+        const data = snap.docs[0].data() as any;
+        const totals = data.totals || {};
+        const catData = totals[item.category] || {};
+
+        // Move quantity from old name to linked name
+        const qty = catData[item.name] || 0;
+        catData[item.linkTo] = (catData[item.linkTo] || 0) + qty;
+        delete catData[item.name];
+        totals[item.category] = catData;
+
+        await setDoc(docRef, { ...data, totals });
+      }
+
+      // Remove this item from the list
+      const updated = items.filter((_, i) => i !== index);
+      this.unmatchedUploadItems.set(updated);
+      if (updated.length === 0) {
+        this.showUnmatchedModal.set(false);
+        this.showAlert('操作成功', '所有品項已連結完成');
+      }
+    } catch (error: any) {
+      console.error('連結品項失敗:', error);
+      this.showAlert('操作失敗', error.message);
     }
   }
 

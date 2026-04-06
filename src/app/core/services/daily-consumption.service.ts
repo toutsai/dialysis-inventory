@@ -32,6 +32,7 @@ export interface UploadResult {
   category?: string;
   itemCount?: number;
   errorCount?: number;
+  unmatchedItems?: { name: string; category: string }[];
 }
 
 // Category header mapping: Excel header → Firestore field
@@ -58,7 +59,7 @@ export class DailyConsumptionService {
    *   Row 1: "&起日20250726&迄日20250825"
    *   Row N: 病歷號 | 姓名 | [耗材類別] | COUNT(*)
    */
-  async parseExcelAndSave(file: File, userName: string): Promise<UploadResult> {
+  async parseExcelAndSave(file: File, userName: string, knownItems: string[] = []): Promise<UploadResult> {
     try {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
@@ -196,6 +197,16 @@ export class DailyConsumptionService {
 
       const categoryName = Object.entries(CATEGORY_MAP).find(([, v]) => v === firestoreField)?.[0] || firestoreField;
 
+      // 8. Check for unmatched items (not in knownItems)
+      const unmatchedItems: { name: string; category: string }[] = [];
+      if (knownItems.length > 0) {
+        for (const itemName of Object.keys(aggregated)) {
+          if (!knownItems.includes(itemName)) {
+            unmatchedItems.push({ name: itemName, category: firestoreField as string });
+          }
+        }
+      }
+
       return {
         success: true,
         message: `上傳成功！日期：${date}，類別：${categoryName}，處理 ${processedRows} 筆資料，${Object.keys(aggregated).length} 個品項。${errorRows > 0 ? `（${errorRows} 筆略過）` : ''}`,
@@ -203,6 +214,7 @@ export class DailyConsumptionService {
         category: firestoreField as string,
         itemCount: Object.keys(aggregated).length,
         errorCount: errorRows,
+        unmatchedItems: unmatchedItems.length > 0 ? unmatchedItems : undefined,
       };
     } catch (error: any) {
       console.error('[DailyConsumption] 解析 Excel 失敗:', error);
