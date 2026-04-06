@@ -81,13 +81,15 @@
   /* --- Layout --- */
   .page-container {
     flex-direction: column;
-    height: 100vh;
+    height: calc(100vh - 2.75rem);
+    height: calc(100dvh - 2.75rem);
     overflow: hidden;
   }
 
   .page-main-content {
-    flex: 1;
+    flex: 1 1 0;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     min-height: 0;
   }
@@ -95,6 +97,7 @@
   /* --- Sidebar → 横向 Tab Bar --- */
   .sidebar {
     width: 100%;
+    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
@@ -132,6 +135,7 @@
   /* --- Tab Panel --- */
   .tab-panel {
     padding: 0.75rem !important;
+    padding-bottom: 4rem !important;
   }
 
   .panel-header {
