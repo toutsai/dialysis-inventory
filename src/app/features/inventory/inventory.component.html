@@ -448,10 +448,14 @@
                 <th colspan="2">期初結存</th>
                 <th colspan="2">區間進貨</th>
                 <th colspan="2">區間消耗</th>
-                <th colspan="2">期末結存</th>
-                <th rowspan="2">調整(個)</th>
+                <th colspan="2">期末結存(預期)</th>
+                <th colspan="2">實際盤點</th>
+                <th rowspan="2">誤差值(個)</th>
+                <th rowspan="2">結轉選擇</th>
               </tr>
               <tr>
+                <th>個數</th>
+                <th>箱數</th>
                 <th>個數</th>
                 <th>箱數</th>
                 <th>個數</th>
@@ -476,19 +480,88 @@
                     <td class="box-cell negative">-{{ calculateBoxes(category, entry.item, entry.data.consumed) }}</td>
                     <td class="result-cell">{{ entry.data.currentStock }}</td>
                     <td class="result-cell box-cell">{{ calculateBoxes(category, entry.item, entry.data.currentStock) }}</td>
-                    <td>
+                    <!-- 實際盤點 (可直接在桌面版輸入) -->
+                    <td class="actual-cell">
                       <input
                         type="number"
-                        [(ngModel)]="entry.data.adjustment"
+                        [(ngModel)]="monthlyActualCountBoxes[category][entry.item]"
+                        (ngModelChange)="syncMonthlyActualCount()"
                         class="adjustment-input"
-                        placeholder="調整值"
+                        placeholder="箱"
+                        min="0"
                       />
+                    </td>
+                    <td class="actual-cell">
+                      @if (entry.data.actualCount !== null && entry.data.actualCount !== undefined) {
+                        {{ entry.data.actualCount }}
+                      } @else {
+                        -
+                      }
+                    </td>
+                    <!-- 誤差值 -->
+                    <td [class.variance-warning]="isVarianceSignificant(entry)">
+                      @if (entry.data.variance !== null && entry.data.variance !== undefined) {
+                        {{ entry.data.variance > 0 ? '+' : '' }}{{ entry.data.variance }}
+                      } @else {
+                        -
+                      }
+                    </td>
+                    <!-- 結轉選擇 -->
+                    <td>
+                      @if (entry.data.actualCount !== null && entry.data.actualCount !== undefined) {
+                        <div class="carry-toggle">
+                          <button [class.active]="!entry.data.useActual" (click)="entry.data.useActual = false" title="用期末結存(預期)當下月期初">預期</button>
+                          <button [class.active]="entry.data.useActual" (click)="entry.data.useActual = true" title="用實際盤點當下月期初">實際</button>
+                        </div>
+                      } @else {
+                        -
+                      }
                     </td>
                   </tr>
                 }
               }
             </tbody>
           </table>
+        </div>
+
+        <!-- 月盤點輸入區 -->
+        <div class="monthly-count-section">
+          <div class="section-header">
+            <h4>月盤點輸入 ({{ monthlyFilter.countDate }})</h4>
+            <button class="btn-sm btn-primary" (click)="saveMonthlyCount()" [disabled]="monthlyLoading()">
+              儲存盤點結果
+            </button>
+          </div>
+          <div class="inventory-grid">
+            @for (category of categoryKeys; track category) {
+              <div class="category-section">
+                <h5>{{ CATEGORY_NAMES[category] }}</h5>
+                <div class="item-inputs">
+                  @for (item of getItemsForCategory(category); track item) {
+                    <div class="item-row">
+                      <label>{{ item }}</label>
+                      <div class="box-input-group">
+                        <input
+                          type="number"
+                          [(ngModel)]="monthlyActualCountBoxes[category][item]"
+                          (ngModelChange)="syncMonthlyActualCount()"
+                          placeholder="箱數"
+                          min="0"
+                          class="box-input"
+                        />
+                        <span class="box-unit">箱</span>
+                        @if (monthlyActualCountBoxes[category]?.[item]) {
+                          <span class="unit-hint">
+                            = {{ calculateMonthlyActualUnits(category, item) }} 個
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
         </div>
       } @else {
         <div class="placeholder-text">請選擇月份並點擊「計算庫存」。</div>
@@ -627,7 +700,8 @@
 
       <div class="sub-tabs">
         <button [class.active]="historySubTab() === 'orders'" (click)="historySubTab.set('orders')">訂單紀錄</button>
-        <button [class.active]="historySubTab() === 'counts'" (click)="historySubTab.set('counts')">盤點紀錄</button>
+        <button [class.active]="historySubTab() === 'counts'" (click)="historySubTab.set('counts')">月盤點紀錄</button>
+        <button [class.active]="historySubTab() === 'weeklyCounts'" (click)="historySubTab.set('weeklyCounts')">週盤點紀錄</button>
       </div>
 
       <div class="search-controls">
@@ -722,6 +796,52 @@
                         <th>品項</th>
                         <th>期末結存(個)</th>
                         <th>期末結存(箱)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (entry of getHistoryCountEntries(record); track entry.key) {
+                        <tr>
+                          <td class="sticky-item-col item-name">{{ CATEGORY_NAMES[entry.category] || entry.category }}</td>
+                          <td>{{ entry.item }}</td>
+                          <td class="has-value">{{ entry.qty }}</td>
+                          <td>{{ calculateBoxes(entry.category, entry.item, entry.qty) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- 週盤點紀錄 -->
+      @if (historySubTab() === 'weeklyCounts') {
+        @if (historyWeeklyCountsLoading()) {
+          <div class="loading-state">載入週盤點紀錄中...</div>
+        } @else if (historyWeeklyCountRecords().length === 0) {
+          <div class="placeholder-text">尚無此月份的週盤點紀錄。請選擇月份並點擊查詢。</div>
+        } @else {
+          <div class="daily-grid-container">
+            @for (record of historyWeeklyCountRecords(); track record.id) {
+              <div class="daily-category-section">
+                <h4 class="daily-category-title">
+                  <span>
+                    盤點日：{{ record.countDate }}
+                    <span style="font-weight: normal; font-size: 0.85rem; margin-left: 1rem;">
+                      週次：{{ record.week }} ｜ {{ record.createdBy }} · {{ formatTimestamp(record.createdAt) }}
+                    </span>
+                  </span>
+                </h4>
+                <div class="daily-table-wrapper">
+                  <table class="daily-grid-table">
+                    <thead>
+                      <tr>
+                        <th class="sticky-item-col">類別</th>
+                        <th>品項</th>
+                        <th>盤點量(個)</th>
+                        <th>盤點量(箱)</th>
                       </tr>
                     </thead>
                     <tbody>
