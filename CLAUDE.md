@@ -1,127 +1,143 @@
-# 部北洗腎室庫存管理平台 - Claude Code 指引
+# 部北洗腎室庫存管理平台 (dialysis-inventory)
 
-## 專案概述
-Angular 19 + Firebase 庫存管理系統，功能：庫存總覽、品項設定、新增訂單、到貨行事曆、進貨紀錄、消耗紀錄、每月盤點、紀錄查詢、使用者管理。
+台北醫院洗腎室庫存管理系統。支援行動版操作，方便護理人員在現場盤點。
 
-## 開發流程（每次必做）
-1. 修改完成後，**自動**執行 **commit → push → 建立 PR → merge to main**，不需詢問使用者確認
-2. Merge 完成後，固定提醒使用者在 VS Code 終端機執行：
-   ```powershell
-   git pull origin main
-   npm run build
-   firebase deploy --only hosting
-   ```
-3. 如有修改 `firestore.rules`，額外提醒：
-   ```powershell
-   firebase deploy --only firestore:rules
-   ```
+## 技術棧
 
-## 關鍵公式
-- **週訂單（透析藥水 & B液）**：日均 = 上週消耗（週一~週六）÷ **6**，安全庫存 = 日均 × **9** 天
-- **月訂單（人工腎臟）**：日均 = 上月消耗 ÷ 上月天數，安全庫存 = 日均 × **36** 天
-- **訂購量** = 安全庫存 - 盤點量 - 待到貨量
+- **Frontend**: Angular 19 (standalone components, signals)
+- **Backend**: Firebase (Firestore + Cloud Functions v2 + Auth)
+- **UI**: 純 CSS（無 UI framework），FullCalendar（到貨行事曆）、Quill（富文本）、Chart.js
+- **部署**: Firebase Hosting (`dist/browser/`)
+- **Cloud Functions**: Node.js 20, region `asia-east1`
+- **離線支援**: Firestore persistent local cache (IndexedDB + multi-tab)
 
-## 名詞定義
-| 名詞 | 來源 | 說明 |
-|------|------|------|
-| **最低庫存量** | 品項設定（手動填寫） | 保底值，用於黃色警示 |
-| **安全庫存量** | 系統自動計算 | 日均×9，用於橘色警示 |
+## 常用指令
 
-## 庫存總覽 4 階狀態
-| 顏色 | 條件 |
-|------|------|
-| 綠色 (safe) | 存量 > 安全庫存量 |
-| 橘色 (warning) | 安全庫存量 ≥ 存量 > 最低庫存量 |
-| 黃色 (low) | 最低庫存量 ≥ 存量 > 0 |
-| 紅色 (critical) | 存量 ≤ 0 |
+```bash
+npm run dev              # 本機開發 (port 5173, emulator config)
+npm start                # ng serve (development config)
+npm run build            # production build
+npm run deploy           # build + firebase deploy hosting
+npm run deploy:functions # 部署 Cloud Functions
+npm run deploy:rules     # 部署 Firestore rules
+npm run emu              # 啟動 Firebase emulators (auth + firestore + functions)
+npm run seed             # 填充測試資料到 emulator
+```
 
-## 訂單流程（叫貨 → 到貨 → 進貨）
-1. **新增訂單**：選擇盤點日期並輸入當日盤點量 → 系統計算建議訂購量 → 確認建立訂單
-2. **到貨行事曆**：顯示每月預計到貨排程 → 點擊確認到貨 → 可編輯實收數量 → 自動建立進貨紀錄
-3. **週訂單**（透析藥水CA、B液種類）：安全庫存 9 天，到貨日為下週一/三
-4. **月訂單**（人工腎臟）：安全庫存 36 天，使用者自選到貨日期並分配數量
+## 專案結構
 
-## 技術備註
-- Build: `npx ng build`
-- Deploy: `firebase deploy --only hosting`
-- Firebase config 在 `src/environments/environment.ts`
-- Cloud Functions 只保留 4 個 auth 相關函數
-- 時區：所有日期統一使用台灣時區 (Asia/Taipei)，使用 `toTaiwanDate()` / `toTaiwanMonth()` / `toTaiwanDateTime()` / `getTaiwanDay()` 方法，禁止使用 `toISOString().split('T')[0]`
-- 庫存總覽基準值：取最新盤點（月盤點 or 訂單盤點快照，比較 countDate 取較新者）
-
-## 權限設計
-| 角色 | 說明 | 權限 |
-|------|------|------|
-| **admin** | 護理長、管理長 | 全部功能（含使用者管理） |
-| **editor** | 書記 | 所有庫存功能（看不到使用者管理） |
-
-- 前端：使用者管理 tab 用 `@if (authService.isAdmin())` 控制顯示
-- Firestore rules：`isAdminOrEditor()` 控制讀寫，`isAdmin()` 控制 users 集合寫入
+```
+src/
+  app/
+    app.config.ts                  # Angular providers (router, animations)
+    app.routes.ts                  # 路由：/login, /inventory (authGuard)
+    components/dialogs/            # 共用對話框 (AlertDialog)
+    core/
+      guards/auth.guard.ts         # 路由守衛，等待 auth 初始化
+      services/
+        auth.service.ts            # 登入/登出/角色權限 (signals)
+        firebase.service.ts        # Firebase 單例初始化 (app/auth/db/functions)
+        daily-consumption.service.ts  # 每日消耗 Excel 解析 + Firestore CRUD
+    features/
+      login/                       # 登入頁
+      inventory/                   # 主功能頁（單一元件 + tab 切換）
+        inventory.component.ts     # 主元件，含所有 tab 邏輯
+        tabs/
+          new-order/               # 新增訂單 tab (獨立子元件)
+          delivery-calendar/       # 到貨行事曆 tab (獨立子元件)
+        services/
+          order.service.ts         # 訂單計算與 CRUD
+          delivery.service.ts      # 到貨管理與進貨紀錄建立
+    layouts/main-layout.component.ts  # 頂部導航列 + router-outlet
+  environments/
+    environment.ts                 # 開發環境 Firebase config
+    environment.production.ts      # 生產環境 Firebase config
+  utils/
+    dateUtils.js                   # 台灣時區日期工具
+    firestoreUtils.js              # Firestore IN 查詢分塊工具
+  data/changelog.json              # 版本更新紀錄
+functions/
+  index.js                        # Cloud Functions (customLogin, createUser, changeUserPassword, adminResetPassword)
+firestore.rules                   # Firestore 安全規則
+firestore.indexes.json             # Firestore 複合索引
+```
 
 ## Firestore Collections
-| Collection | 說明 | Document ID |
+
+| Collection | Document ID | 說明 |
 |---|---|---|
-| `inventory_items` | 品項設定 | auto |
-| `inventory_purchases` | 進貨紀錄（含 source: manual/delivery） | auto |
-| `inventory_counts` | 盤點紀錄（type: monthly） | YYYY-MM |
-| `inventory_orders` | 訂單紀錄（含 countData 盤點快照） | auto |
-| `inventory_deliveries` | 到貨紀錄（橋接訂單與進貨） | auto |
-| `daily_consumption` | 每日消耗 | YYYY-MM-DD |
-| `audit_logs` | 操作日誌 | auto |
+| `inventory_items` | auto | 品項設定（名稱、類別、每箱數量、院內代碼） |
+| `inventory_orders` | auto | 訂單（含 countData 盤點快照、消耗資料） |
+| `inventory_deliveries` | auto | 到貨排程（橋接訂單與進貨） |
+| `inventory_purchases` | auto | 進貨紀錄（source: manual / delivery） |
+| `inventory_counts` | YYYY-MM | 月盤點紀錄（期初、進貨、消耗、預期、實際、結轉） |
+| `daily_consumption` | YYYY-MM-DD | 每日消耗（從醫院 Excel 匯入） |
+| `users` | auto | 使用者帳號（密碼 bcrypt hash） |
+| `audit_logs` | auto | 操作稽核日誌（僅 admin 可讀，不可改刪） |
 
-### inventory_counts 擴展欄位（月盤點）
-| 欄位 | 說明 |
+## 品項分類
+
+| Firestore key | 中文名 | 訂單類型 | 安全庫存天數 |
+|---|---|---|---|
+| `artificialKidney` | 人工腎臟 | 月訂單 | 36 天 |
+| `dialysateCa` | 透析藥水CA | 週訂單 | 9 天 |
+| `bicarbonateType` | B液種類 | 週訂單 | 9 天 |
+
+## 關鍵業務公式
+
+- **週訂單**：日均 = 上週消耗（週一~週六） / 6，安全庫存 = 日均 x 9
+- **月訂單**：日均 = 上月消耗 / 上月天數，安全庫存 = 日均 x 36
+- **訂購量** = 安全庫存 - 盤點量 - 待到貨量
+
+## 庫存狀態（4 階）
+
+| 狀態 | 條件 |
 |------|------|
-| `counts` | 結轉值（下月期初，依結轉選擇決定用預期或實際） |
-| `expectedCounts` | 系統計算的期末結存（期初+進貨-消耗） |
-| `actualCounts` | 實際盤點值（從月盤點輸入） |
-| `actualCountBoxes` | 實際盤點箱數 |
+| 綠色 safe | 存量 > 安全庫存量 |
+| 橘色 warning | 安全庫存量 >= 存量 > 最低庫存量 |
+| 黃色 low | 最低庫存量 >= 存量 > 0 |
+| 紅色 critical | 存量 <= 0 |
 
-## 行動版設計
-- 行動版（≤768px）只顯示 5 個 tab：庫存總覽、新增訂單、到貨行事曆、每月盤點、紀錄查詢
-- 隱藏：品項設定、進貨紀錄、消耗紀錄、使用者管理（`desktop-only` class）
-- 頁面容器：`height: calc(100dvh - 2.75rem)` + `overflow-y: auto`
-- Tab panel 底部加 4rem padding 確保內容不被截斷
+- **最低庫存量**：品項設定中手動填寫
+- **安全庫存量**：系統自動計算（日均 x 天數）
+
+## 訂單流程
+
+1. **新增訂單**：輸入盤點量 -> 系統計算建議訂購量 -> 確認建立
+2. **到貨行事曆**：FullCalendar 顯示預計到貨 -> 確認到貨 -> 自動建立進貨紀錄
+3. 週訂單到貨日：下週一/三；月訂單到貨日：使用者自選
 
 ## 每月盤點流程
-1. 輸入盤點日、區間 → 點「計算庫存」
-2. Sub-tab 切換：
-   - **月盤點輸入**：box input grid 輸入實際盤點箱數
-   - **盤點總表**：完整結存比較表
-3. 盤點總表欄位：期初結存 → 區間進貨 → 區間消耗 → 期末結存(預期) → 實際盤點 → 誤差值 → 結轉選擇
-4. 誤差值 = 實際盤點 - 期末結存，超過消耗量 1% 顯示紅色
-5. 結轉選擇：管理員選「預期」或「實際」當下月期初庫存
-6. 儲存時 `counts` = 依結轉選擇的值（下月 `previousStock` 的來源）
 
-## 紀錄查詢格式
-| Tab | 篩選 | 格式 |
-|-----|------|------|
-| 訂單紀錄 | 月份 | 訂單卡片（週訂單/月訂單） |
-| 到貨紀錄 | 月份 | 到貨明細卡片（含差異比較） |
-| 月盤點紀錄 | **年份** | 品項×12 個月一覽表（daily-grid 風格） |
+1. 輸入盤點日期、區間 -> 點「計算庫存」
+2. **月盤點輸入**：box input grid 輸入實際盤點箱數
+3. **盤點總表**：期初 -> 進貨 -> 消耗 -> 期末預期 -> 實際盤點 -> 誤差值 -> 結轉選擇
+4. 誤差超過消耗 1% 顯示紅色
+5. 結轉選擇「預期」或「實際」作為下月期初庫存
 
-## 開發紀錄
+## 權限
 
-### 2026-04-08
-- 專案重構：建立「叫貨 → 到貨 → 進貨」完整鏈路
-- 新增「新增訂單」tab（取代每週訂單）：支援週訂單（透析藥水/B液，9天安全庫存）和月訂單（人工腎臟，36天安全庫存）
-- 新增「到貨行事曆」tab：使用 FullCalendar 顯示預計到貨，點擊確認到貨自動建立進貨紀錄
-- 新增 `inventory_deliveries` Firestore collection（橋接訂單與進貨）
-- 新增 `order.service.ts`、`delivery.service.ts`
-- 進貨紀錄新增「來源」欄位（手動 / 到貨確認）
-- 紀錄查詢移除舊格式 sub-tab，新增「到貨紀錄」
-- Dashboard 基準值改為取最新月盤點 vs 最新訂單 countDate
-- 架構改為漸進式拆分：新 tab 為獨立子元件（NewOrderTabComponent, DeliveryCalendarTabComponent）
+| 角色 | 說明 | 權限 |
+|------|------|------|
+| `admin` | 護理長、管理長 | 全部功能（含使用者管理） |
+| `editor` | 書記 | 所有庫存功能（無使用者管理） |
 
-### 2026-04-06
-- 進貨提醒兩步確認流程 + 訂單儲存至 Firestore + autoFillFromLastOrder
-- 歷史紀錄列表（每週訂單/每月盤點 tab，daily-grid 風格）
-- 每週盤點校正庫存總覽（loadDashboard 取最新盤點為基準）
-- 全面修正時區問題（Asia/Taipei）
-- 行動版優化（4 tab + 響應式排版 + 滾動修復）
-- 每月盤點新增：實際盤點、誤差值、結轉選擇欄位
-- 每月盤點改為 sub-tab（月盤點輸入 / 盤點總表）
-- 每週訂單新增「清除盤點」按鈕
-- 紀錄查詢：月盤點改為整年 12 月一覽表，週盤點改為整月週次一覽表
-- 標題改為「部北洗腎室庫存管理平台」
-- Firestore rules 簡化為 admin + editor 兩種角色
+- 前端：`@if (authService.isAdmin())` 控制使用者管理 tab
+- Firestore rules：`isAdminOrEditor()` 控制讀寫，`isAdmin()` 控制 users 集合
+- Cloud Functions：auth 相關函式檢查 `request.auth.token.role`
+
+## 行動版設計
+
+- 斷點 <= 768px
+- 僅顯示 5 個 tab：庫存總覽、新增訂單、到貨行事曆、每月盤點、紀錄查詢
+- 隱藏 tab 使用 `desktop-only` CSS class
+- 容器高度：`calc(100dvh - 2.75rem)` + `overflow-y: auto`
+
+## 開發注意事項
+
+- **時區**：所有日期統一台灣時區 (`Asia/Taipei`)，使用 `dateUtils.js` 或 service 內的 `toTaiwanDate()` 等方法，禁止 `toISOString().split('T')[0]`
+- **Angular 風格**：standalone components + signals，不使用 NgModules
+- **Firestore IN 限制**：超過 30 個值需使用 `firestoreUtils.js` 的 `queryWithInChunks()`
+- **Cloud Functions region**：`asia-east1`，CORS 白名單在 `functions/index.js` 中設定
+- **密碼自動遷移**：`customLogin` 會自動將明文密碼升級為 bcrypt hash
+- **庫存基準值**：取最新月盤點 vs 最新訂單 countDate，比較日期取較新者
