@@ -1469,3 +1469,56 @@ tr.dash-warning {
   background-color: #f1f8e9;
   color: #558b2f;
 }
+
+/* ─── Source Badge (進貨紀錄) ─── */
+.source-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #e0e0e0;
+  color: #555;
+}
+.source-badge.source-delivery {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* ─── Delivery History (紀錄查詢) ─── */
+.delivery-status-tag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+.delivery-status-tag.ds-confirmed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.delivery-status-tag.ds-partial {
+  background: #fff3e0;
+  color: #e65100;
+}
+.delivery-status-tag.ds-pending {
+  background: #fff8e1;
+  color: #f57f17;
+}
+.delivery-type-tag {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  background: #f5f5f5;
+  color: #888;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+.delivery-notes {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0.25rem 0 0 0;
+}

@@ -43,6 +43,11 @@ service cloud.firestore {
       allow write: if isAdminOrEditor();
     }
 
+    match /inventory_deliveries/{deliveryId} {
+      allow read: if isAdminOrEditor();
+      allow write: if isAdminOrEditor();
+    }
+
     match /inventory_counts/{countId} {
       allow read: if isAdminOrEditor();
       allow write: if isAdminOrEditor();
