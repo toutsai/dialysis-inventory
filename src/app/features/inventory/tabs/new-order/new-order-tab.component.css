@@ -349,6 +349,45 @@ tbody td {
 .modal-wide {
   max-width: 700px;
 }
+.modal-order-preview {
+  max-width: 900px;
+  width: 95vw;
+}
+
+/* ─── Signature Section ─── */
+.preview-subtitle {
+  margin: 0 0 0.75rem;
+  color: #555;
+  font-size: 0.9rem;
+}
+.signature-section {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  gap: 2rem;
+}
+.signature-field {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+.signature-label {
+  font-size: 0.9rem;
+  color: #333;
+  white-space: nowrap;
+}
+.signature-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1a73e8;
+}
+.signature-line {
+  display: inline-block;
+  width: 120px;
+  border-bottom: 1px solid #333;
+}
 .modal-header {
   display: flex;
   justify-content: space-between;
