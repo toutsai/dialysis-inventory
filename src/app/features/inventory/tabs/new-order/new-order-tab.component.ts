@@ -203,23 +203,22 @@ export class NewOrderTabComponent {
       });
     }
 
-    // Split orders into boxes, pre-fill Mon(index 0) and Wed(index 2)
+    // Initialize grid for ALL items, pre-fill Mon & Wed for items that need ordering
     this.weeklyPreviewGrid = {};
     for (const r of this.filteredResults) {
-      if (r.suggestedOrder <= 0) continue;
       const key = `${r.category}:${r.item}`;
-      const unitsPerBox = this.getUnitsPerBox(r.category, r.item);
-      const totalBoxes = Math.ceil(r.suggestedOrder / unitsPerBox);
-      const half1 = Math.ceil(totalBoxes / 2);
-      const half2 = totalBoxes - half1;
-
       this.weeklyPreviewGrid[key] = {};
       for (const dd of this.weeklyDeliveryDates) {
         this.weeklyPreviewGrid[key][dd.date] = 0;
       }
-      // Pre-fill Monday and Wednesday
-      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[0].date] = half1; // Mon
-      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[2].date] = half2; // Wed
+      if (r.suggestedOrder > 0) {
+        const unitsPerBox = this.getUnitsPerBox(r.category, r.item);
+        const totalBoxes = Math.ceil(r.suggestedOrder / unitsPerBox);
+        const half1 = Math.ceil(totalBoxes / 2);
+        const half2 = totalBoxes - half1;
+        this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[0].date] = half1; // Mon
+        this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[2].date] = half2; // Wed
+      }
     }
 
     this.showOrderPreview.set(true);
