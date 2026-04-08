@@ -190,25 +190,36 @@ export class NewOrderTabComponent {
     // Next Monday
     const nextMonday = new Date(now);
     nextMonday.setDate(now.getDate() + (8 - dayOfWeek) % 7 || 7);
-    // Next Wednesday
-    const nextWednesday = new Date(nextMonday);
-    nextWednesday.setDate(nextMonday.getDate() + 2);
 
-    this.weeklyDeliveryDates = [
-      { date: this.toTaiwanDate(nextMonday), label: `週一 (${this.formatShortDate(nextMonday)})` },
-      { date: this.toTaiwanDate(nextWednesday), label: `週三 (${this.formatShortDate(nextWednesday)})` },
-    ];
+    // Build Mon-Sat delivery dates for next week
+    this.weeklyDeliveryDates = [];
+    const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六'];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(nextMonday);
+      d.setDate(nextMonday.getDate() + i);
+      this.weeklyDeliveryDates.push({
+        date: this.toTaiwanDate(d),
+        label: `${dayLabels[i]} (${this.formatShortDate(d)})`,
+      });
+    }
 
-    // Split orders evenly across Mon/Wed
+    // Split orders into boxes, pre-fill Mon(index 0) and Wed(index 2)
     this.weeklyPreviewGrid = {};
     for (const r of this.filteredResults) {
       if (r.suggestedOrder <= 0) continue;
       const key = `${r.category}:${r.item}`;
-      const half1 = Math.ceil(r.suggestedOrder / 2);
-      const half2 = r.suggestedOrder - half1;
+      const unitsPerBox = this.getUnitsPerBox(r.category, r.item);
+      const totalBoxes = Math.ceil(r.suggestedOrder / unitsPerBox);
+      const half1 = Math.ceil(totalBoxes / 2);
+      const half2 = totalBoxes - half1;
+
       this.weeklyPreviewGrid[key] = {};
-      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[0].date] = half1;
-      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[1].date] = half2;
+      for (const dd of this.weeklyDeliveryDates) {
+        this.weeklyPreviewGrid[key][dd.date] = 0;
+      }
+      // Pre-fill Monday and Wednesday
+      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[0].date] = half1; // Mon
+      this.weeklyPreviewGrid[key][this.weeklyDeliveryDates[2].date] = half2; // Wed
     }
 
     this.showOrderPreview.set(true);
@@ -221,7 +232,14 @@ export class NewOrderTabComponent {
   setWeeklyPreviewQty(category: string, item: string, date: string, value: number): void {
     const key = `${category}:${item}`;
     if (!this.weeklyPreviewGrid[key]) this.weeklyPreviewGrid[key] = {};
-    this.weeklyPreviewGrid[key][date] = value || 0;
+    this.weeklyPreviewGrid[key][date] = Number(value) || 0;
+  }
+
+  getWeeklyPreviewRowTotal(category: string, item: string): number {
+    const key = `${category}:${item}`;
+    const grid = this.weeklyPreviewGrid[key];
+    if (!grid) return 0;
+    return Object.values(grid).reduce((sum, v) => sum + v, 0);
   }
 
   // ─── Monthly Calendar ───
@@ -312,14 +330,19 @@ export class NewOrderTabComponent {
     try {
       this.syncCount();
       const items: OrderItem[] = [];
-      for (const [key, dateQtyMap] of Object.entries(this.weeklyPreviewGrid)) {
+      // weeklyPreviewGrid stores BOXES — convert to units for the order
+      for (const [key, dateBoxMap] of Object.entries(this.weeklyPreviewGrid)) {
         const [category, item] = key.split(':');
-        const totalQuantity = Object.values(dateQtyMap).reduce((s, v) => s + v, 0);
-        if (totalQuantity <= 0) continue;
+        const unitsPerBox = this.getUnitsPerBox(category, item);
+        const totalBoxes = Object.values(dateBoxMap).reduce((s, v) => s + v, 0);
+        if (totalBoxes <= 0) continue;
         const hospitalCode = this.filteredResults.find(r => r.category === category && r.item === item)?.hospitalCode || '';
         items.push({
-          category, item, hospitalCode, totalQuantity,
-          deliveries: Object.entries(dateQtyMap).map(([date, quantity]) => ({ date, quantity })),
+          category, item, hospitalCode,
+          totalQuantity: totalBoxes * unitsPerBox,
+          deliveries: Object.entries(dateBoxMap)
+            .filter(([, boxes]) => boxes > 0)
+            .map(([date, boxes]) => ({ date, quantity: boxes * unitsPerBox })),
         });
       }
 

@@ -70,7 +70,7 @@
             <div class="dash-category-section">
               <h4 class="dash-category-title">{{ CATEGORY_NAMES[category] }}</h4>
               <div class="dash-cards-grid">
-                @for (item of getDashboardItemsByCategory(category); track item.itemName) {
+                @for (item of getDashboardItemsByCategory(category); track $index) {
                   <div class="dash-card" [class.dash-card-safe]="item.status === 'safe'" [class.dash-card-warning]="item.status === 'warning'" [class.dash-card-low]="item.status === 'low'" [class.dash-card-critical]="item.status === 'critical'">
                     <div class="dash-card-header">
                       <span class="dash-card-name">{{ item.itemName }}</span>

@@ -253,30 +253,30 @@
 <!-- ===== Weekly Order Preview Modal ===== -->
 @if (showOrderPreview()) {
   <div class="modal-overlay" (click)="showOrderPreview.set(false)">
-    <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+    <div class="modal-content modal-order-preview" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>週訂單預覽</h3>
         <button class="modal-close" (click)="showOrderPreview.set(false)">&times;</button>
       </div>
       <div class="modal-body">
-        <p>到貨日分配（可手動調整數量）</p>
+        <p class="preview-subtitle">到貨日分配（以箱為單位，可手動調整）</p>
         <div class="table-container">
           <table>
             <thead>
               <tr>
-                <th>類別</th>
+                <th>院內代碼</th>
                 <th>品項</th>
                 @for (dd of weeklyDeliveryDates; track dd.date) {
                   <th>{{ dd.label }}</th>
                 }
-                <th>合計</th>
+                <th>合計(箱)</th>
               </tr>
             </thead>
             <tbody>
-              @for (r of filteredResults; track r.category + r.item) {
+              @for (r of filteredResults; track r.category + ':' + r.item) {
                 @if (r.suggestedOrder > 0) {
                   <tr>
-                    <td>{{ CATEGORY_NAMES[r.category] }}</td>
+                    <td>{{ r.hospitalCode }}</td>
                     <td>{{ r.item }}</td>
                     @for (dd of weeklyDeliveryDates; track dd.date) {
                       <td>
@@ -289,12 +289,24 @@
                         />
                       </td>
                     }
-                    <td class="total-col">{{ r.suggestedOrder }}</td>
+                    <td class="total-col">{{ getWeeklyPreviewRowTotal(r.category, r.item) }}</td>
                   </tr>
                 }
               }
             </tbody>
           </table>
+        </div>
+
+        <!-- 簽名欄 -->
+        <div class="signature-section">
+          <div class="signature-field">
+            <span class="signature-label">製表人：</span>
+            <span class="signature-value">{{ userName }}</span>
+          </div>
+          <div class="signature-field">
+            <span class="signature-label">洗腎室護理長：</span>
+            <span class="signature-line"></span>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
