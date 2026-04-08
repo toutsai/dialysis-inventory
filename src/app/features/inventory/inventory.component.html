@@ -8,6 +8,12 @@
       <button [class.active]="activeTab() === 'items'" (click)="activeTab.set('items')" class="desktop-only">
         <span class="nav-icon">📋</span>品項設定
       </button>
+      <button [class.active]="activeTab() === 'newOrder'" (click)="activeTab.set('newOrder')">
+        <span class="nav-icon">📝</span>新增訂單
+      </button>
+      <button [class.active]="activeTab() === 'deliveryCalendar'" (click)="activeTab.set('deliveryCalendar')">
+        <span class="nav-icon">📅</span>到貨行事曆
+      </button>
       <button [class.active]="activeTab() === 'purchase'" (click)="activeTab.set('purchase')" class="desktop-only">
         <span class="nav-icon">📦</span>進貨紀錄
       </button>
@@ -15,10 +21,7 @@
         <span class="nav-icon">📄</span>消耗紀錄
       </button>
       <button [class.active]="activeTab() === 'monthly'" (click)="activeTab.set('monthly')">
-        <span class="nav-icon">📅</span>每月盤點
-      </button>
-      <button [class.active]="activeTab() === 'weekly'" (click)="activeTab.set('weekly'); loadWeeklyData()">
-        <span class="nav-icon">📝</span>每週訂單
+        <span class="nav-icon">🗂️</span>每月盤點
       </button>
       <button [class.active]="activeTab() === 'history'" (click)="activeTab.set('history')">
         <span class="nav-icon">📜</span>紀錄查詢
@@ -182,6 +185,27 @@
     </div>
     }
 
+    <!-- ========== Tab: 新增訂單 ========== -->
+    @if (activeTab() === 'newOrder') {
+      <app-new-order-tab
+        [inventoryItems]="inventoryItems()"
+        [knownItems]="knownItems"
+        [userName]="authService.currentUser()?.name || ''"
+        (orderCreated)="onOrderCreated()"
+        (showAlert)="showAlert($event.title, $event.message)"
+      ></app-new-order-tab>
+    }
+
+    <!-- ========== Tab: 到貨行事曆 ========== -->
+    @if (activeTab() === 'deliveryCalendar') {
+      <app-delivery-calendar-tab
+        [inventoryItems]="inventoryItems()"
+        [userName]="authService.currentUser()?.name || ''"
+        (deliveryConfirmed)="onDeliveryConfirmed()"
+        (showAlert)="showAlert($event.title, $event.message)"
+      ></app-delivery-calendar-tab>
+    }
+
     <!-- ========== Tab 1: 進貨紀錄 ========== -->
     @if (activeTab() === 'purchase') {
     <div class="tab-panel">
@@ -220,6 +244,7 @@
                 <th>品項</th>
                 <th>箱數</th>
                 <th>個數</th>
+                <th>來源</th>
                 <th>輸入者</th>
                 <th>操作</th>
               </tr>
@@ -246,6 +271,7 @@
                   </td>
                   <td><input type="number" [(ngModel)]="purchaseForm.boxQuantity" min="1" style="width: 60px;" /></td>
                   <td>-</td>
+                  <td>手動</td>
                   <td>-</td>
                   <td>
                     <button class="btn-sm btn-save" (click)="saveInlinePurchase()" [disabled]="!isPurchaseFormValid">儲存</button>
@@ -260,6 +286,11 @@
                   <td>{{ item.item }}</td>
                   <td>{{ item.boxQuantity || '-' }}</td>
                   <td>{{ item.quantity }}</td>
+                  <td>
+                    <span class="source-badge" [class.source-delivery]="item.source === 'delivery'">
+                      {{ item.source === 'delivery' ? '到貨確認' : '手動' }}
+                    </span>
+                  </td>
                   <td>{{ item.createdBy }}</td>
                   <td>
                     <button class="btn-sm btn-edit" (click)="openPurchaseModal(item)">編輯</button>
@@ -268,7 +299,7 @@
                 </tr>
               }
               @if (purchases().length === 0 && !showPurchaseInlineAdd()) {
-                <tr><td colspan="7" class="empty-state">尚無進貨紀錄</td></tr>
+                <tr><td colspan="8" class="empty-state">尚無進貨紀錄</td></tr>
               }
             </tbody>
           </table>
@@ -581,130 +612,6 @@
     </div>
     }
 
-    <!-- ========== Tab 4: 每週訂單 ========== -->
-    @if (activeTab() === 'weekly') {
-    <div class="tab-panel">
-      <div class="panel-header">
-        <h3>每週訂單計算</h3>
-        <p class="panel-description">訂購量 = 安全庫存(9天) - 盤點量 - 預計本周到貨</p>
-      </div>
-
-      <div class="filter-bar">
-        <div class="filter-field">
-          <label>盤點日</label>
-          <input type="date" [(ngModel)]="weeklyFilter.countDate" />
-        </div>
-        <div class="filter-field">
-          <label>選擇週次</label>
-          <input type="week" [(ngModel)]="weeklyFilter.week" />
-        </div>
-        <button class="btn-primary" (click)="loadWeeklyData()" [disabled]="weeklyLoading()">
-          {{ weeklyLoading() ? '計算中...' : '計算訂單' }}
-        </button>
-      </div>
-
-      @if (weeklyDataLoaded()) {
-        <div class="weekly-content">
-          <!-- 盤點輸入區 -->
-          <div class="weekly-section">
-            <div class="section-header">
-              <h4>盤點輸入 ({{ weeklyFilter.countDate }})</h4>
-              <div style="display: flex; gap: 0.5rem;">
-                <button class="btn-sm btn-secondary" (click)="clearWeeklyCount()">清除盤點</button>
-                <button class="btn-sm btn-primary" (click)="saveWeeklyCount()" [disabled]="weeklyLoading()">
-                  儲存盤點
-                </button>
-              </div>
-            </div>
-            <div class="inventory-grid">
-              @for (category of categoryKeys; track category) {
-                <div class="category-section">
-                  <h5>{{ CATEGORY_NAMES[category] }}</h5>
-                  <div class="item-inputs">
-                    @for (item of getItemsForCategory(category); track item) {
-                      <div class="item-row">
-                        <label>{{ item }}</label>
-                        <div class="box-input-group">
-                          <input
-                            type="number"
-                            [(ngModel)]="weeklyCountBoxes[category][item]"
-                            (ngModelChange)="syncWeeklyCount()"
-                            placeholder="箱數"
-                            min="0"
-                            class="box-input"
-                          />
-                          <span class="box-unit">箱</span>
-                          @if (weeklyCountBoxes[category]?.[item]) {
-                            <span class="unit-hint">
-                              = {{ calculateWeeklyUnits(category, item) }} 個
-                            </span>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-
-          <!-- 訂購建議表 -->
-          <div class="weekly-section">
-            <div class="section-header">
-              <h4>訂購建議</h4>
-              <button class="btn-success" (click)="exportWeeklyOrder()" [disabled]="!hasOrderData">
-                匯出訂單 (以箱為單位)
-              </button>
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>類別</th>
-                    <th>品項</th>
-                    <th>每箱數量</th>
-                    <th>盤點量(個)</th>
-                    <th>預計到貨(個)</th>
-                    <th>上週消耗(個)</th>
-                    <th>日均消耗</th>
-                    <th>安全庫存(9天)</th>
-                    <th>建議訂購(個)</th>
-                    <th>建議訂購(箱)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (category of categoryKeys; track category) {
-                    @for (item of getItemsForCategory(category); track item) {
-                      <tr>
-                        <td>{{ CATEGORY_NAMES[category] }}</td>
-                        <td>{{ item }}</td>
-                        <td>{{ getUnitsPerBox(category, item) }}</td>
-                        <td>{{ weeklyCount[category]?.[item] || 0 }}</td>
-                        <td>{{ getPendingPurchase(category, item) }}</td>
-                        <td>{{ getWeeklyConsumption(category, item) }}</td>
-                        <td>{{ getDailyAvg(category, item) }}</td>
-                        <td>{{ getSafetyStock(category, item) }}</td>
-                        <td [class.need-order]="getOrderQuantity(category, item) > 0">
-                          {{ getOrderQuantity(category, item) }}
-                        </td>
-                        <td [class.need-order]="getOrderQuantity(category, item) > 0" class="box-cell">
-                          {{ calculateBoxesRounded(category, item, getOrderQuantity(category, item)) }}
-                        </td>
-                      </tr>
-                    }
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      } @else {
-        <div class="placeholder-text">請選擇週次並點擊「載入資料」。</div>
-      }
-
-    </div>
-    }
-
     <!-- ========== Tab: 訂單與盤點紀錄 ========== -->
     @if (activeTab() === 'history') {
     <div class="tab-panel">
@@ -714,8 +621,8 @@
 
       <div class="sub-tabs">
         <button [class.active]="historySubTab() === 'orders'" (click)="historySubTab.set('orders')">訂單紀錄</button>
+        <button [class.active]="historySubTab() === 'deliveries'" (click)="historySubTab.set('deliveries')">到貨紀錄</button>
         <button [class.active]="historySubTab() === 'counts'" (click)="historySubTab.set('counts')">月盤點紀錄</button>
-        <button [class.active]="historySubTab() === 'weeklyCounts'" (click)="historySubTab.set('weeklyCounts')">週盤點紀錄</button>
       </div>
 
       <div class="search-controls">
@@ -730,8 +637,8 @@
             <input type="month" [(ngModel)]="historyMonth" />
           </div>
         }
-        <button class="btn-primary" (click)="loadHistoryData()" [disabled]="historyOrdersLoading() || historyCountsLoading() || historyWeeklyCountsLoading()">
-          {{ (historyOrdersLoading() || historyCountsLoading() || historyWeeklyCountsLoading()) ? '載入中...' : '查詢' }}
+        <button class="btn-primary" (click)="loadHistoryData()" [disabled]="historyOrdersLoading() || historyCountsLoading() || historyDeliveriesLoading()">
+          {{ (historyOrdersLoading() || historyCountsLoading() || historyDeliveriesLoading()) ? '載入中...' : '查詢' }}
         </button>
       </div>
 
@@ -837,44 +744,53 @@
         }
       }
 
-      <!-- 週盤點紀錄 (品項×週次一覽表) -->
-      @if (historySubTab() === 'weeklyCounts') {
-        @if (historyWeeklyCountsLoading()) {
-          <div class="loading-state">載入週盤點紀錄中...</div>
+      <!-- 到貨紀錄 -->
+      @if (historySubTab() === 'deliveries') {
+        @if (historyDeliveriesLoading()) {
+          <div class="loading-state">載入到貨紀錄中...</div>
+        } @else if (historyDeliveryRecords().length === 0) {
+          <div class="placeholder-text">尚無此月份的到貨紀錄。請選擇月份並點擊查詢。</div>
         } @else {
           <div class="daily-grid-container">
-            @for (category of categoryKeys; track category) {
-              @if (getWeeklyCountItemsByCategory(category).length > 0) {
-                <div class="daily-category-section">
-                  <h4 class="daily-category-title">{{ CATEGORY_NAMES[category] }}</h4>
-                  <div class="daily-table-wrapper">
-                    <table class="daily-grid-table">
-                      <thead>
+            @for (delivery of historyDeliveryRecords(); track delivery.id) {
+              <div class="daily-category-section">
+                <h4 class="daily-category-title">
+                  {{ delivery.expectedDate }}
+                  <span class="delivery-status-tag" [class]="'ds-' + delivery.status">
+                    {{ delivery.status === 'confirmed' ? '已確認' : delivery.status === 'partial' ? '差異到貨' : '待到貨' }}
+                  </span>
+                  <span class="delivery-type-tag">{{ delivery.orderType === 'weekly' ? '週訂單' : '月訂單' }}</span>
+                </h4>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>類別</th>
+                        <th>品項</th>
+                        <th>預期數量</th>
+                        <th>實收數量</th>
+                        <th>差異</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of delivery.items; track item.category + item.item) {
                         <tr>
-                          <th class="sticky-item-col">品項</th>
-                          @for (col of getWeeklyCountColumns(); track col.weekLabel) {
-                            <th [class.has-data]="col.countDate !== null" style="white-space: pre-line; min-width: 80px;">
-                              {{ col.weekLabel }}
-                            </th>
-                          }
+                          <td>{{ CATEGORY_NAMES[item.category] }}</td>
+                          <td>{{ item.item }}</td>
+                          <td>{{ item.expectedQuantity }}</td>
+                          <td>{{ item.receivedQuantity ?? '-' }}</td>
+                          <td [style.color]="item.receivedQuantity !== null && item.receivedQuantity !== item.expectedQuantity ? '#d32f2f' : ''">
+                            {{ item.receivedQuantity !== null ? item.receivedQuantity - item.expectedQuantity : '-' }}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        @for (item of getWeeklyCountItemsByCategory(category); track item) {
-                          <tr>
-                            <td class="sticky-item-col item-name">{{ item }}</td>
-                            @for (col of getWeeklyCountColumns(); track col.weekLabel) {
-                              <td class="day-cell" [class.has-value]="getWeeklyCountValueByDate(category, item, col.countDate) !== null">
-                                {{ getWeeklyCountValueByDate(category, item, col.countDate) ?? '' }}
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
+                      }
+                    </tbody>
+                  </table>
                 </div>
-              }
+                @if (delivery.notes) {
+                  <p class="delivery-notes">備註：{{ delivery.notes }}</p>
+                }
+              </div>
             }
           </div>
         }

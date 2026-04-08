@@ -5,6 +5,9 @@ import { FirebaseService } from '@services/firebase.service';
 import { AuthService } from '@services/auth.service';
 import { DailyConsumptionService } from '@services/daily-consumption.service';
 import { AlertDialogComponent } from '@app/components/dialogs/alert-dialog/alert-dialog.component';
+import { NewOrderTabComponent } from './tabs/new-order/new-order-tab.component';
+import { DeliveryCalendarTabComponent } from './tabs/delivery-calendar/delivery-calendar-tab.component';
+import { DeliveryService, InventoryDelivery } from './services/delivery.service';
 import {
   collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc,
   doc, Timestamp, setDoc, getDoc, limit,
@@ -27,7 +30,7 @@ const DEFAULT_ITEMS: Record<string, string[]> = {
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule, AlertDialogComponent],
+  imports: [CommonModule, FormsModule, AlertDialogComponent, NewOrderTabComponent, DeliveryCalendarTabComponent],
   templateUrl: './inventory.component.html',
   styleUrl: './inventory.component.css',
 })
@@ -35,6 +38,7 @@ export class InventoryComponent implements OnInit {
   private readonly firebaseService = inject(FirebaseService);
   protected readonly authService = inject(AuthService);
   private readonly dailyConsumption = inject(DailyConsumptionService);
+  private readonly deliveryServiceRef = inject(DeliveryService);
 
   readonly CATEGORY_NAMES = CATEGORY_NAMES;
   readonly categoryKeys = Object.keys(CATEGORY_NAMES);
@@ -184,15 +188,15 @@ export class InventoryComponent implements OnInit {
   }
 
   // ==================== Tab: 訂單與盤點紀錄 ====================
-  historySubTab = signal<'orders' | 'counts' | 'weeklyCounts'>('orders');
+  historySubTab = signal<'orders' | 'deliveries' | 'counts'>('orders');
   historyMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 7);
   historyYear = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }).slice(0, 4);
   historyOrderRecords = signal<any[]>([]);
+  historyDeliveryRecords = signal<InventoryDelivery[]>([]);
   historyCountRecords = signal<any[]>([]);
-  historyWeeklyCountRecords = signal<any[]>([]);
   historyOrdersLoading = signal(false);
+  historyDeliveriesLoading = signal(false);
   historyCountsLoading = signal(false);
-  historyWeeklyCountsLoading = signal(false);
 
   knownItems: Record<string, string[]> = {
     artificialKidney: [],
@@ -750,25 +754,24 @@ export class InventoryComponent implements OnInit {
         ? (lastCountDoc.data() as any).countDate || `${countDateStr}-01`
         : '';
 
-      // 1b. Check if a more recent weekly count exists → use it as baseline
+      // 1b. Check if a more recent order count exists → use it as baseline
       try {
-        const weeklyQuery = query(
-          collection(db, 'inventory_counts'),
-          where('type', '==', 'weekly'),
+        const orderQuery = query(
+          collection(db, 'inventory_orders'),
           orderBy('countDate', 'desc'),
           limit(1)
         );
-        const weeklySnap = await getDocs(weeklyQuery);
-        if (!weeklySnap.empty) {
-          const weeklyData = weeklySnap.docs[0].data() as any;
-          const weeklyCountDate = weeklyData.countDate || '';
-          if (weeklyCountDate > countDate) {
-            baseCounts = weeklyData.counts || {};
-            countDate = weeklyCountDate;
+        const orderSnap = await getDocs(orderQuery);
+        if (!orderSnap.empty) {
+          const orderData = orderSnap.docs[0].data() as any;
+          const orderCountDate = orderData.countDate || '';
+          if (orderCountDate > countDate && orderData.countData) {
+            baseCounts = orderData.countData;
+            countDate = orderCountDate;
           }
         }
       } catch (e) {
-        console.warn('週盤點查詢失敗，使用月盤點基準:', e);
+        console.warn('訂單盤點查詢失敗，使用月盤點基準:', e);
       }
 
       this.dashboardLastCountDate.set(countDate);
@@ -1847,10 +1850,22 @@ export class InventoryComponent implements OnInit {
   loadHistoryData(): void {
     if (this.historySubTab() === 'orders') {
       this.loadHistoryOrders();
-    } else if (this.historySubTab() === 'weeklyCounts') {
-      this.loadHistoryWeeklyRecords();
+    } else if (this.historySubTab() === 'deliveries') {
+      this.loadHistoryDeliveries();
     } else {
       this.loadHistoryMonthlyRecords();
+    }
+  }
+
+  async loadHistoryDeliveries(): Promise<void> {
+    this.historyDeliveriesLoading.set(true);
+    try {
+      const deliveries = await this.deliveryServiceRef.getDeliveriesByMonth(this.historyMonth);
+      this.historyDeliveryRecords.set(deliveries);
+    } catch (error) {
+      console.error('載入到貨紀錄失敗:', error);
+    } finally {
+      this.historyDeliveriesLoading.set(false);
     }
   }
 
@@ -1902,32 +1917,7 @@ export class InventoryComponent implements OnInit {
     }
   }
 
-  async loadHistoryWeeklyRecords(): Promise<void> {
-    this.historyWeeklyCountsLoading.set(true);
-    try {
-      const db = this.firebaseService.db;
-      const month = this.historyMonth;
-      // Weekly doc IDs are like "2026-W14". We query by countDate range.
-      const startDate = `${month}-01`;
-      const [y, m] = month.split('-').map(Number);
-      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-      const endDate = `${nextMonth}-01`;
-
-      const q = query(
-        collection(db, 'inventory_counts'),
-        where('type', '==', 'weekly'),
-        where('countDate', '>=', startDate),
-        where('countDate', '<', endDate),
-        orderBy('countDate', 'desc')
-      );
-      const snap = await getDocs(q);
-      this.historyWeeklyCountRecords.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (error: any) {
-      console.error('載入週盤點紀錄失敗:', error);
-    } finally {
-      this.historyWeeklyCountsLoading.set(false);
-    }
-  }
+  // loadHistoryWeeklyRecords removed - replaced by loadHistoryDeliveries
 
   onHistoryMonthlyRecordLoad(record: any): void {
     this.monthlyFilter.countDate = record.countDate || '';
@@ -2029,74 +2019,6 @@ export class InventoryComponent implements OnInit {
     return records.some((r: any) => r.id === monthKey);
   }
 
-  // 週盤點紀錄一覽表 helpers
-  // 產生該月的所有週欄位（以每週一為基準，約 4-5 週）
-  getWeeklyCountColumns(): { weekLabel: string; countDate: string | null }[] {
-    const [y, m] = this.historyMonth.split('-').map(Number);
-    const firstDay = new Date(y, m - 1, 1);
-    const lastDay = new Date(y, m, 0);
-    const records = this.historyWeeklyCountRecords();
-
-    // 計算該月有幾個「週」 — 以每週一開始算
-    const weeks: { weekLabel: string; countDate: string | null }[] = [];
-    let weekNum = 1;
-
-    // 找出每個週一
-    const d = new Date(firstDay);
-    // 回到第一個週一（如果1號不是週一，從1號所在的那週算起）
-    const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon
-    // 不往前推，直接從月初開始，按7天分割
-    const current = new Date(firstDay);
-    while (current <= lastDay) {
-      const weekStart = new Date(current);
-      const weekEnd = new Date(current);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      if (weekEnd > lastDay) weekEnd.setTime(lastDay.getTime());
-
-      const startStr = `${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
-      const endStr = `${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
-      const label = `第${weekNum}週\n${startStr}-${endStr}`;
-
-      // 找該週有沒有盤點紀錄（countDate 落在這個區間內）
-      const wsDate = this.toTaiwanDate(weekStart);
-      const weDate = this.toTaiwanDate(weekEnd);
-      const matchedRecord = records.find((r: any) => {
-        const cd = r.countDate;
-        return cd && cd >= wsDate && cd <= weDate;
-      });
-
-      weeks.push({
-        weekLabel: label,
-        countDate: matchedRecord?.countDate || null,
-      });
-
-      current.setDate(current.getDate() + 7);
-      weekNum++;
-    }
-
-    return weeks;
-  }
-
-  getWeeklyCountItemsByCategory(category: string): string[] {
-    const records = this.historyWeeklyCountRecords();
-    const items = new Set<string>();
-    // 也從 knownItems 取得
-    (this.knownItems[category] || []).forEach((item: string) => items.add(item));
-    records.forEach((r: any) => {
-      const counts = r.counts?.[category] || {};
-      Object.keys(counts).forEach(item => items.add(item));
-    });
-    return [...items].sort();
-  }
-
-  getWeeklyCountValueByDate(category: string, item: string, countDate: string | null): number | null {
-    if (!countDate) return null;
-    const records = this.historyWeeklyCountRecords();
-    const record = records.find((r: any) => r.countDate === countDate);
-    if (!record) return null;
-    return record.counts?.[category]?.[item] ?? null;
-  }
-
   getHospitalCode(category: string, itemName: string): string {
     const items = this.inventoryItems();
     const found = items.find((i: any) => i.category === category && i.name === itemName);
@@ -2161,6 +2083,23 @@ export class InventoryComponent implements OnInit {
     for (const category of Object.keys(this.knownItems)) {
       this.knownItems[category].sort();
     }
+  }
+
+  // ==================== New Order / Delivery Calendar event handlers ====================
+
+  onOrderCreated(): void {
+    // Refresh dashboard and purchase list
+    if (this.dashboardLoaded()) {
+      this.loadDashboard();
+    }
+  }
+
+  onDeliveryConfirmed(): void {
+    // Refresh dashboard and purchase list
+    if (this.dashboardLoaded()) {
+      this.loadDashboard();
+    }
+    this.fetchPurchases();
   }
 
   onModalOverlayClick(event: MouseEvent, modal: 'purchase' | 'item'): void {

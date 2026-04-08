@@ -1,0 +1,308 @@
+<div class="tab-panel">
+  <div class="panel-header">
+    <h3>新增訂單</h3>
+  </div>
+
+  <!-- ===== Mode Selector ===== -->
+  <div class="mode-selector">
+    <button [class.active]="orderMode() === 'weekly'" (click)="orderMode.set('weekly'); calculated.set(false)">
+      週訂單（透析藥水 &amp; B液）
+    </button>
+    <button [class.active]="orderMode() === 'monthly'" (click)="orderMode.set('monthly'); calculated.set(false)">
+      月訂單（人工腎臟）
+    </button>
+  </div>
+
+  <p class="panel-description">
+    @if (orderMode() === 'weekly') {
+      訂購量 = 安全庫存(9天) - 盤點量 - 待到貨 ｜ 安全庫存 = 上週日均消耗 &times; 9
+    } @else {
+      訂購量 = 安全庫存(36天) - 盤點量 - 待到貨 ｜ 安全庫存 = 上月日均消耗 &times; 36
+    }
+  </p>
+
+  <!-- ===== Count Date + Calculate ===== -->
+  <div class="filter-bar">
+    <div class="filter-field">
+      <label>盤點日期</label>
+      <input type="date" [(ngModel)]="countDate" />
+    </div>
+    <button class="btn-primary" (click)="calculateOrder()" [disabled]="loading()">
+      {{ loading() ? '計算中...' : '計算訂單' }}
+    </button>
+  </div>
+
+  <!-- ===== Section A: Count Input ===== -->
+  <div class="weekly-section">
+    <div class="section-header">
+      <h4>當日盤點 ({{ countDate }})</h4>
+      <button class="btn-sm btn-secondary" (click)="clearCount()">清除盤點</button>
+    </div>
+    <div class="inventory-grid">
+      @if (orderMode() === 'weekly') {
+        @for (category of weeklyCategories; track category) {
+          <div class="category-section">
+            <h5>{{ CATEGORY_NAMES[category] }}</h5>
+            <div class="item-inputs">
+              @for (item of getItemsForCategory(category); track item) {
+                <div class="item-row">
+                  <label>{{ item }}</label>
+                  <div class="box-input-group">
+                    <input
+                      type="number"
+                      [(ngModel)]="countBoxes[category][item]"
+                      (ngModelChange)="syncCount()"
+                      placeholder="箱數"
+                      min="0"
+                      class="box-input"
+                    />
+                    <span class="box-unit">箱</span>
+                    @if (countBoxes[category]?.[item]) {
+                      <span class="unit-hint">
+                        = {{ calculateCountUnits(category, item) }} 個
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="category-section">
+          <h5>{{ CATEGORY_NAMES['artificialKidney'] }}</h5>
+          <div class="item-inputs">
+            @for (item of getItemsForCategory('artificialKidney'); track item) {
+              <div class="item-row">
+                <label>{{ item }}</label>
+                <div class="box-input-group">
+                  <input
+                    type="number"
+                    [(ngModel)]="countBoxes['artificialKidney'][item]"
+                    (ngModelChange)="syncCount()"
+                    placeholder="箱數"
+                    min="0"
+                    class="box-input"
+                  />
+                  <span class="box-unit">箱</span>
+                  @if (countBoxes['artificialKidney']?.[item]) {
+                    <span class="unit-hint">
+                      = {{ calculateCountUnits('artificialKidney', item) }} 個
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ===== Section C: Calculation Results ===== -->
+  @if (calculated()) {
+    <div class="weekly-section">
+      <div class="section-header">
+        <h4>訂購建議</h4>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-success" (click)="exportOrder()" [disabled]="!hasOrderItems">
+            匯出 Excel
+          </button>
+          @if (orderMode() === 'weekly') {
+            <button class="btn-primary" (click)="openWeeklyPreview()" [disabled]="!hasOrderItems">
+              預覽訂單 &amp; 確認
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="consumption-period">
+        參考消耗區間：{{ consumptionPeriod().start }} ~ {{ consumptionPeriod().end }}
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>類別</th>
+              <th>品項</th>
+              <th>每箱數量</th>
+              <th>盤點量(個)</th>
+              <th>待到貨(個)</th>
+              <th>{{ orderMode() === 'weekly' ? '上週消耗(個)' : '上月消耗(個)' }}</th>
+              <th>日均消耗</th>
+              <th>安全庫存({{ orderMode() === 'weekly' ? '9' : '36' }}天)</th>
+              <th>建議訂購(個)</th>
+              <th>建議訂購(箱)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filteredResults; track r.category + r.item) {
+              <tr>
+                <td>{{ CATEGORY_NAMES[r.category] }}</td>
+                <td>{{ r.item }}</td>
+                <td>{{ getUnitsPerBox(r.category, r.item) }}</td>
+                <td>{{ r.currentStock }}</td>
+                <td>{{ r.pendingDeliveries }}</td>
+                <td>{{ r.consumption }}</td>
+                <td>{{ r.dailyAvg | number:'1.1-1' }}</td>
+                <td>{{ r.safetyStock }}</td>
+                <td [class.need-order]="r.suggestedOrder > 0">{{ r.suggestedOrder }}</td>
+                <td [class.need-order]="r.suggestedOrder > 0" class="box-cell">
+                  {{ calculateBoxesRounded(r.category, r.item, r.suggestedOrder) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== Monthly: Delivery Date Picker + Distribution ===== -->
+    @if (orderMode() === 'monthly' && hasOrderItems) {
+      <div class="weekly-section">
+        <div class="section-header">
+          <h4>選擇到貨日期 &amp; 分配數量</h4>
+        </div>
+
+        <!-- Mini Calendar -->
+        <div class="mini-calendar-wrapper">
+          <div class="calendar-nav">
+            <input type="month" [(ngModel)]="monthlyCalendarMonth" (ngModelChange)="onCalendarMonthChange()" />
+          </div>
+          <div class="mini-calendar">
+            <div class="cal-header">日</div>
+            <div class="cal-header">一</div>
+            <div class="cal-header">二</div>
+            <div class="cal-header">三</div>
+            <div class="cal-header">四</div>
+            <div class="cal-header">五</div>
+            <div class="cal-header">六</div>
+            @for (blank of getCalendarBlanks(); track $index) {
+              <div class="cal-blank"></div>
+            }
+            @for (d of monthlyCalendarDays; track d.date) {
+              <div
+                class="cal-day"
+                [class.selected]="d.selected"
+                [class.weekend]="d.isWeekend"
+                (click)="toggleCalendarDate(d.date)"
+              >
+                {{ d.day }}
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (monthlySelectedDates.length > 0) {
+          <p class="selected-dates-label">
+            已選到貨日：{{ monthlySelectedDates.length }} 天
+          </p>
+
+          <!-- Distribution Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>品項</th>
+                  <th>建議總量</th>
+                  @for (date of monthlySelectedDates; track date) {
+                    <th>{{ formatDateShort(date) }}</th>
+                  }
+                  <th>分配合計</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of filteredResults; track r.category + r.item) {
+                  @if (r.suggestedOrder > 0) {
+                    <tr>
+                      <td class="item-name">{{ r.item }}</td>
+                      <td>{{ r.suggestedOrder }}</td>
+                      @for (date of monthlySelectedDates; track date) {
+                        <td>
+                          <input
+                            type="number"
+                            class="dist-input"
+                            [ngModel]="getMonthlyDistQty(r.category, r.item, date)"
+                            (ngModelChange)="setMonthlyDistQty(r.category, r.item, date, $event)"
+                            min="0"
+                          />
+                        </td>
+                      }
+                      <td [class.dist-mismatch]="getMonthlyDistTotal(r.category, r.item) !== r.suggestedOrder">
+                        {{ getMonthlyDistTotal(r.category, r.item) }}
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="order-actions">
+            <button class="btn-primary" (click)="confirmMonthlyOrder()" [disabled]="loading()">
+              {{ loading() ? '建立中...' : '確認建立月訂單' }}
+            </button>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>
+
+<!-- ===== Weekly Order Preview Modal ===== -->
+@if (showOrderPreview()) {
+  <div class="modal-overlay" (click)="showOrderPreview.set(false)">
+    <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>週訂單預覽</h3>
+        <button class="modal-close" (click)="showOrderPreview.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>到貨日分配（可手動調整數量）</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>類別</th>
+                <th>品項</th>
+                @for (dd of weeklyDeliveryDates; track dd.date) {
+                  <th>{{ dd.label }}</th>
+                }
+                <th>合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of filteredResults; track r.category + r.item) {
+                @if (r.suggestedOrder > 0) {
+                  <tr>
+                    <td>{{ CATEGORY_NAMES[r.category] }}</td>
+                    <td>{{ r.item }}</td>
+                    @for (dd of weeklyDeliveryDates; track dd.date) {
+                      <td>
+                        <input
+                          type="number"
+                          class="dist-input"
+                          [ngModel]="getWeeklyPreviewQty(r.category, r.item, dd.date)"
+                          (ngModelChange)="setWeeklyPreviewQty(r.category, r.item, dd.date, $event)"
+                          min="0"
+                        />
+                      </td>
+                    }
+                    <td class="total-col">{{ r.suggestedOrder }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showOrderPreview.set(false)">取消</button>
+        <button class="btn-primary" (click)="confirmWeeklyOrder()" [disabled]="loading()">
+          {{ loading() ? '建立中...' : '確認建立訂單' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

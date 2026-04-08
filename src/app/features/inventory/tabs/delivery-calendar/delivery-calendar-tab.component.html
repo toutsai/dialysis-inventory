@@ -1,0 +1,164 @@
+<div class="tab-panel">
+  <div class="panel-header">
+    <h3>到貨行事曆</h3>
+    @if (loading()) {
+      <span class="loading-hint">載入中...</span>
+    }
+  </div>
+
+  <!-- ===== Summary Cards ===== -->
+  <div class="delivery-summary">
+    <div class="summary-card pending">
+      <span class="summary-count">{{ getDeliveriesByStatus('pending').length }}</span>
+      <span class="summary-label">待到貨</span>
+    </div>
+    <div class="summary-card confirmed">
+      <span class="summary-count">{{ getDeliveriesByStatus('confirmed').length }}</span>
+      <span class="summary-label">已確認</span>
+    </div>
+    <div class="summary-card partial">
+      <span class="summary-count">{{ getDeliveriesByStatus('partial').length }}</span>
+      <span class="summary-label">差異到貨</span>
+    </div>
+  </div>
+
+  <!-- ===== Calendar ===== -->
+  <div class="calendar-wrapper">
+    <full-calendar [options]="calendarOptions"></full-calendar>
+  </div>
+
+  <!-- ===== Pending Deliveries List ===== -->
+  @if (getDeliveriesByStatus('pending').length > 0) {
+    <div class="pending-list-section">
+      <h4>待確認到貨</h4>
+      <div class="pending-list">
+        @for (d of getDeliveriesByStatus('pending'); track d.id) {
+          <div class="pending-card" [class]="getStatusClass(d)" (click)="openDetailModal(d)">
+            <div class="pending-date">{{ d.expectedDate }}</div>
+            <div class="pending-items">
+              @for (item of d.items; track item.category + item.item) {
+                <span class="pending-item-tag">{{ item.item }} ({{ item.expectedQuantity }})</span>
+              }
+            </div>
+            <div class="pending-type">{{ d.orderType === 'weekly' ? '週訂單' : '月訂單' }}</div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ===== Detail Modal ===== -->
+@if (showDetailModal()) {
+  <div class="modal-overlay" (click)="closeDetailModal()">
+    <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>到貨明細</h3>
+        <button class="modal-close" (click)="closeDetailModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (selectedDelivery(); as delivery) {
+          <div class="detail-info">
+            <div class="detail-row">
+              <span class="detail-label">預計到貨日：</span>
+              <span>{{ delivery.expectedDate }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">訂單類型：</span>
+              <span>{{ delivery.orderType === 'weekly' ? '週訂單' : '月訂單' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">狀態：</span>
+              <span class="status-badge" [class]="getStatusClass(delivery)">{{ getStatusLabel(delivery.status) }}</span>
+            </div>
+            @if (delivery.confirmedBy) {
+              <div class="detail-row">
+                <span class="detail-label">確認者：</span>
+                <span>{{ delivery.confirmedBy }}</span>
+              </div>
+            }
+            @if (delivery.notes) {
+              <div class="detail-row">
+                <span class="detail-label">備註：</span>
+                <span class="detail-notes">{{ delivery.notes }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Items Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>類別</th>
+                  <th>品項</th>
+                  <th>預期數量</th>
+                  @if (isPending(delivery)) {
+                    <th>實收箱數</th>
+                    <th>實收數量</th>
+                  } @else {
+                    <th>實收數量</th>
+                    <th>差異</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @if (isPending(delivery)) {
+                  @for (item of receivedItems; track item.category + item.item; let i = $index) {
+                    <tr>
+                      <td>{{ CATEGORY_NAMES[item.category] }}</td>
+                      <td>{{ item.item }}</td>
+                      <td>{{ item.expectedQuantity }}</td>
+                      <td>
+                        <input
+                          type="number"
+                          class="receive-input"
+                          [(ngModel)]="item.receivedBoxes"
+                          (ngModelChange)="onReceivedBoxesChange(i)"
+                          min="0"
+                        />
+                        <span class="box-unit">箱</span>
+                      </td>
+                      <td>
+                        <span [class.diff-highlight]="item.receivedQuantity !== item.expectedQuantity">
+                          {{ item.receivedQuantity }}
+                        </span>
+                        @if (item.unitsPerBox > 1) {
+                          <span class="unit-hint">(每箱{{ item.unitsPerBox }}個)</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                } @else {
+                  @for (item of delivery.items; track item.category + item.item) {
+                    <tr>
+                      <td>{{ CATEGORY_NAMES[item.category] }}</td>
+                      <td>{{ item.item }}</td>
+                      <td>{{ item.expectedQuantity }}</td>
+                      <td>{{ item.receivedQuantity ?? '-' }}</td>
+                      <td [class.diff-highlight]="item.receivedQuantity !== null && item.receivedQuantity !== item.expectedQuantity">
+                        @if (item.receivedQuantity !== null) {
+                          {{ item.receivedQuantity - item.expectedQuantity }}
+                        } @else {
+                          -
+                        }
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeDetailModal()">關閉</button>
+        @if (isPending(selectedDelivery())) {
+          <button class="btn-primary" (click)="confirmArrival()" [disabled]="confirming()">
+            {{ confirming() ? '確認中...' : '確認到貨' }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
