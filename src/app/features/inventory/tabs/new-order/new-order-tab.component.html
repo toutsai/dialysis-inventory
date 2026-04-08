@@ -274,8 +274,7 @@
             </thead>
             <tbody>
               @for (r of filteredResults; track r.category + ':' + r.item) {
-                @if (r.suggestedOrder > 0) {
-                  <tr>
+                  <tr [class.no-order]="r.suggestedOrder <= 0">
                     <td>{{ r.hospitalCode }}</td>
                     <td>{{ r.item }}</td>
                     @for (dd of weeklyDeliveryDates; track dd.date) {
@@ -291,7 +290,6 @@
                     }
                     <td class="total-col">{{ getWeeklyPreviewRowTotal(r.category, r.item) }}</td>
                   </tr>
-                }
               }
             </tbody>
           </table>

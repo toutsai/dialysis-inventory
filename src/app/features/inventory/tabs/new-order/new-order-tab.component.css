@@ -259,6 +259,9 @@ tbody td {
 .total-col {
   font-weight: 600;
 }
+.no-order td {
+  color: #aaa;
+}
 
 /* ─── Mini Calendar ─── */
 .mini-calendar-wrapper {
