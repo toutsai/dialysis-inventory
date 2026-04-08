@@ -108,7 +108,7 @@ export class NewOrderTabComponent {
   syncCount(): void {
     for (const category of this.categoryKeys) {
       for (const [item, boxes] of Object.entries(this.countBoxes[category])) {
-        this.countUnits[category][item] = (boxes || 0) * this.getUnitsPerBox(category, item);
+        this.countUnits[category][item] = (Number(boxes) || 0) * this.getUnitsPerBox(category, item);
       }
     }
   }
@@ -133,14 +133,29 @@ export class NewOrderTabComponent {
   async calculateOrder(): Promise<void> {
     this.loading.set(true);
     this.syncCount();
+
+    // Build a fresh count snapshot to pass to the service
+    const countSnapshot: Record<string, Record<string, number>> = {};
+    for (const category of this.categoryKeys) {
+      countSnapshot[category] = {};
+      for (const [item, boxes] of Object.entries(this.countBoxes[category])) {
+        const unitsPerBox = this.getUnitsPerBox(category, item);
+        countSnapshot[category][item] = (Number(boxes) || 0) * unitsPerBox;
+      }
+    }
+    // Also update countUnits for the confirm step
+    for (const cat of this.categoryKeys) {
+      this.countUnits[cat] = { ...countSnapshot[cat] };
+    }
+
     try {
       if (this.orderMode() === 'weekly') {
-        const result = await this.orderService.calculateWeeklyOrder(this.countUnits, this.inventoryItems);
+        const result = await this.orderService.calculateWeeklyOrder(countSnapshot, this.inventoryItems);
         this.calculationResults.set(result.results);
         this.consumptionPeriod.set(result.consumptionPeriod);
         this.consumptionData.set(result.consumptionData);
       } else {
-        const result = await this.orderService.calculateMonthlyOrder(this.countUnits, this.inventoryItems);
+        const result = await this.orderService.calculateMonthlyOrder(countSnapshot, this.inventoryItems);
         this.calculationResults.set(result.results);
         this.consumptionPeriod.set(result.consumptionPeriod);
         this.consumptionData.set(result.consumptionData);
